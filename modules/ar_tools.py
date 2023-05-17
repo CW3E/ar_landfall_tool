@@ -34,7 +34,7 @@ class waterfall_ivt_probability:
     
     Parameters
     ----------
-    filename : str
+    ptloc : str
         name of the .txt file with latitude and longitude of locations for analysis
         this file should have no header, with latitude, then longitude, separated by a space
     forecast : str
@@ -49,7 +49,7 @@ class waterfall_ivt_probability:
     
     '''
     
-    def __init__(self, textpts_fname, forecast='GEFS', threshold=250):
+    def __init__(self, loc, ptloc, forecast='GEFS', threshold=250, orientation='latitude'):
         path_to_data = '/data/downloaded/SCRATCH/cw3eit_scratch/'
         if forecast == 'GEFS':
             fpath = path_to_data + 'GEFS/FullFiles/'
@@ -70,6 +70,9 @@ class waterfall_ivt_probability:
         self.model_init_date = datetime.strptime(self.date_string, '%Y%m%d%H')
 
         ## read text file with points
+        self.loc = loc
+        self.ptloc = ptloc
+        textpts_fname = '../data/{0}/latlon_{1}.txt'.format(self.loc, self.ptloc)
         df = pd.read_csv(textpts_fname, header=None, sep=' ', names=['latitude', 'longitude'], engine='python')
         df['longitude'] = df['longitude']*-1
         self.df = df
@@ -80,6 +83,9 @@ class waterfall_ivt_probability:
         self.kw_grid = {'linewidth': .5, 'color': 'k', 'linestyle': '--', 'alpha': 0.1}
         self.kw_ticks = {'length': 4, 'width': 0.5, 'pad': 2, 'color': 'black'}
         self.IVT_units = 'kg m$^{-1}$ s$^{-1}$'
+        
+        ## info for plot orientation
+        self.orientation = orientation
 
     def get_date_information(self):
 
@@ -121,7 +127,7 @@ class waterfall_ivt_probability:
         self.probability = (ds.IVT.where(ds.IVT > self.threshold).count(dim='ensemble')) / data_size
     
         
-    def plot_waterfall(self, ax):
+    def plot_waterfall_latitude(self, ax):
         
         self.calc_ivt_probability() # run the calculation
         
@@ -164,17 +170,69 @@ class waterfall_ivt_probability:
         
         return ax
     
+    def plot_waterfall_longitude(self, ax):
+        
+        self.calc_ivt_probability() # run the calculation
+        
+        # Contour Filled
+        y = self.probability.forecast_hour / 24 # convert forecast hour to forecast day
+        x = self.probability.lon
+        data = self.probability.values
+        self.cflevs = [0., 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1.] # levels for IVT probability
+        cmap = nclc.cmap('WhiteBlueGreenYellowRed') # cmap for IVT probability
+        self.cf = ax.contourf(x, y, data, levels=self.cflevs, cmap=cmap, extend='neither')
+        ax.invert_xaxis() # invert x-axis so that time reads from right to left
+                  
+        # get tick and label information
+        self.get_date_information()
+
+        # apply xtick parameters
+        ticks_loc = ax.get_xticks().tolist()
+        ax.xaxis.set_major_locator(mticker.FixedLocator(ticks_loc))
+        ax.set_xticklabels([u"{:0.0f}\N{DEGREE SIGN}W".format(x) for x in ticks_loc], **self.kw_ticklabels)
+        # apply ytick parameters
+        ax.yaxis.set_major_locator(mticker.MaxNLocator(16))
+        ticks_loc = ax.get_yticks().tolist()
+        ax.yaxis.set_major_locator(mticker.FixedLocator(ticks_loc))
+        # ax.set_yticklabels([u"{:0.0f}".format(x) for x in ticks_loc], **self.kw_ticklabels) # labels are days since forecast initialization
+        ax.set_yticklabels(["{0}".format(x) for x in self.xtck_lbl], **self.kw_ticklabels) # labels are month/day
+
+        # apply gridlines
+        ax.minorticks_on()
+        ax.grid(visible=None, which='both', axis='x', **self.kw_grid)
+        ax.grid(visible=None, which='major', axis='y', **self.kw_grid)
+        ax.tick_params(axis='y', which='minor', left=False)
+        ax.tick_params(axis='y', which='major', **self.kw_ticks)
+        ax.tick_params(axis='x', which='major', direction='out', **self.kw_ticks)
+
+        ## labels and subtitles
+        # ax.set_xlabel("Longitude along West Coast", fontsize=8)
+        ax.set_ylabel(self.xlbl, fontsize=8)
+        ax.set_title(self.title, loc='right', fontsize=8)
+        ax.set_title('16-d {0} Prob of IVT > {1} {2}'.format(self.ensemble_name, self.threshold, self.IVT_units), loc='left', fontsize=8)
+        
+        plt.gca().invert_yaxis()
+        plt.gca().invert_xaxis()
+        
+        return ax
+    
                   
     def plot_map(self, ax, mapcrs, datacrs):
-                  
         ## Set up extent of plot at gridlines
-        lonmin = self.lons.min()-5.
-        lonmax = self.lons.max()+5.
-        latmin = self.lats.min()
-        latmax = self.lats.max()
-
+        if self.orientation == 'latitude':          
+            lonmin = self.lons.min()-2.
+            lonmax = self.lons.max()+2.
+            latmin = self.lats.min()
+            latmax = self.lats.max()
+            
+        elif self.orientation == 'longitude':
+            lonmin = self.lons.min()
+            lonmax = self.lons.max()
+            latmin = self.lats.min()-2.
+            latmax = self.lats.max()+2.
+            
         ext = [lonmin, lonmax, latmin, latmax] # extent of map plot
-        du = 5 # how frequent for ticks ##TODO: create a more flexible option
+        du = 5 # how frequent for ticks
         dx = np.arange(lonmin,lonmax+du,du)
         dy = np.arange(latmin,latmax+du,du)
                   
@@ -211,47 +269,81 @@ class waterfall_ivt_probability:
             ax.plot(x, y, 'ko', markersize=2, transform=datacrs)
 
         ## plot labels
-        label = 'Forecasts support FIRO/CA-AR Program Intended for research purposes only'
-        ax.set_title(textwrap.fill(label, 36), loc='right', fontsize=5)
+        if self.loc == 'US-west':
+            label = 'Forecasts support FIRO/CA-AR Program Intended for research purposes only'
+            ax.set_title(textwrap.fill(label, 36), loc='right', fontsize=5)
+        else:
+            label = 'Forecasts support NSF Coastlines and People Program: #2052972  Intended for research purposes only'
+            ax.set_title(textwrap.fill(label, 61), loc='right', fontsize=5)
         
         return ax
     
     def create_figure(self):
-
-        fig = plt.figure(figsize=(10, 3))
-        fig.dpi = 300
-        fname = '../figs/waterfall_{0}_{1}'.format(self.ensemble_name, self.date_string)
+        fname = '../figs/{0}/waterfall_{1}_{2}_{3}_{4}'.format(self.loc, self.ptloc, self.ensemble_name, self.threshold, self.date_string)
         fmt = 'png'
-
-        nrows = 2
-        ncols = 2
-
-        ## Use gridspec to set up a plot with a series of subplots that is
-        ## n-rows by n-columns
-        gs = GridSpec(nrows, ncols, height_ratios=[1, 0.05], width_ratios = [2, 1], wspace=0.05, hspace=0.4)
-        ## use gs[rows index, columns index] to access grids         
         
-        ## Add waterfall plot         
-        ax = fig.add_subplot(gs[0, 0])
-        self.plot_waterfall(ax)
-                  
-        ## Add color bar
-        cbax = plt.subplot(gs[1,0]) # colorbar axis
-        cb = Colorbar(ax = cbax, mappable = self.cf, orientation = 'horizontal', ticklocation = 'bottom', ticks=self.cflevs[::2])
-                  
+        if self.orientation == 'latitude':
+            fig = plt.figure(figsize=(10, 3))
+            fig.dpi = 300
+            nrows = 2
+            ncols = 2
+            ## Use gridspec to set up a plot with a series of subplots that is
+            ## n-rows by n-columns
+            gs = GridSpec(nrows, ncols, height_ratios=[1, 0.05], width_ratios = [2, 1], wspace=0.1, hspace=0.4)
+            ## use gs[rows index, columns index] to access grids         
+
+            ## Add waterfall plot         
+            ax = fig.add_subplot(gs[0, 0])
+            self.plot_waterfall_latitude(ax)
+
+            ## Add color bar
+            cbax = plt.subplot(gs[1,0]) # colorbar axis
+            cb = Colorbar(ax = cbax, mappable = self.cf, orientation = 'horizontal', ticklocation = 'bottom', ticks=self.cflevs[::2])
+
+            # Set up projection information for map
+            mapcrs = ccrs.PlateCarree()
+            datacrs = ccrs.PlateCarree()
+            ## Add map
+            ax = fig.add_subplot(gs[0, 1], projection=mapcrs)
+            self.plot_map(ax, mapcrs, datacrs)
+
+            ## TODO: Add CW3E logo
+            # im = 'path/to/cw3e-logo'
+            # ax = fig.add_subplot(gs[1, 1])
+            # ax.imshow(im)
+            # ax.axis('off')
+            
         
-        # Set up projection information for map
-        mapcrs = ccrs.PlateCarree()
-        datacrs = ccrs.PlateCarree()
-        ## Add map
-        ax = fig.add_subplot(gs[0, 1], projection=mapcrs)
-        self.plot_map(ax, mapcrs, datacrs)
-                  
-        ## TODO: Add CW3E logo
-        # im = 'path/to/cw3e-logo'
-        # ax = fig.add_subplot(gs[1, 1])
-        # ax.imshow(im)
-        # ax.axis('off')
+        elif self.orientation == 'longitude':
+            fig = plt.figure(figsize=(8, 8))
+            fig.dpi = 300
+            nrows = 3
+            ncols = 1
+            ## Use gridspec to set up a plot with a series of subplots that is
+            ## n-rows by n-columns
+            gs = GridSpec(nrows, ncols, height_ratios=[0.7, 1, 0.05], width_ratios = [1], hspace=0.1)
+            ## use gs[rows index, columns index] to access grids         
+
+            ## Add waterfall plot         
+            ax = fig.add_subplot(gs[1, 0])
+            self.plot_waterfall_longitude(ax)
+
+            ## Add color bar
+            cbax = plt.subplot(gs[2,0]) # colorbar axis
+            cb = Colorbar(ax = cbax, mappable = self.cf, orientation = 'horizontal', ticklocation = 'bottom', ticks=self.cflevs[::2])
+
+            # Set up projection information for map
+            mapcrs = ccrs.PlateCarree()
+            datacrs = ccrs.PlateCarree()
+            ## Add map
+            ax = fig.add_subplot(gs[0, 0], projection=mapcrs)
+            self.plot_map(ax, mapcrs, datacrs)
+
+            ## TODO: Add CW3E logo
+            # im = 'path/to/cw3e-logo'
+            # ax = fig.add_subplot(gs[1, 1])
+            # ax.imshow(im)
+            # ax.axis('off')
         
         fig.savefig('%s.%s' %(fname, fmt), bbox_inches='tight', dpi=fig.dpi)
         plt.show()
