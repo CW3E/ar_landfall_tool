@@ -1,7 +1,7 @@
 """
-Filename:    waterfall_IVT_plume_US-west-coast.py
+Filename:    ivt_plume_us-west-coast.py
 Author:      Deanna Nash, dnash@ucsd.edu
-Description: For GFS, output .png files of waterfall plot for different IVT thresholds and coastal, foothill and inland points
+Description: For GFS, output .png files of ar landfall tool plot (contour and vector) for different IVT thresholds and coastal, foothill and inland points
 """
 
 import os, sys
@@ -13,5 +13,8 @@ textpts_loc_lst = ['coast', 'foothills', 'inland']
 
 for i, threshold in enumerate(threshold_lst):
     for j, textpts_loc in enumerate(textpts_loc_lst):
-        s = waterfall_ivt_probability(loc='US-west', ptloc=textpts_loc, forecast='GEFS', threshold=threshold, orientation='latitude')
+        s = landfall_tool_contour(loc='US-west', ptloc=textpts_loc, forecast='GEFS', threshold=threshold, orientation='latitude')
+        s.create_figure()
+        
+        s = landfall_tool_vector(loc='US-west', ptloc=textpts_loc, forecast='GEFS', threshold=threshold, orientation='latitude')
         s.create_figure()

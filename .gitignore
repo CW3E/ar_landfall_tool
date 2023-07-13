@@ -7,5 +7,5 @@
 .ipynb_checkpoints
 
 ## ignore data folder
-
+/figs/*
 /data/*
