@@ -2,10 +2,10 @@
 
 *.mp4
 *.nc
-
+*.grb
 # ignore juypter checkpoint files
 .ipynb_checkpoints
 
 ## ignore data folder
 /figs/*
-/data/*
+
