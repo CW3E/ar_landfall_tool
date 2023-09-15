@@ -425,7 +425,7 @@ class landfall_tool_contour:
         return ax
     
     def create_figure(self):
-        fname = '../figs/{0}/landfall-contour_{1}_{2}_{3}_{4}'.format(self.loc, self.ptloc, self.ensemble_name, self.threshold, self.date_string)
+        fname = '../figs/{0}/landfall-contour_{1}_{2}_{3}_{4}'.format(self.loc, self.ptloc, self.forecast, self.threshold, self.date_string)
         fmt = 'png'
         
         # get tick and label information
