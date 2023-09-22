@@ -6,7 +6,8 @@ Description: For GFS or ECMWF, output .png files of ar landfall tool plot (conto
 
 import os, sys
 sys.path.append('../modules')
-from cw3e_tools import landfall_tool_contour, landfall_tool_vector
+from ar_landfall_tool_contour import landfall_tool_contour
+from ar_landfall_tool_vector import landfall_tool_vector
 
 ptloc_lst = ['coast', 'inland'] + ['coast', 'foothills', 'inland']*2
 loc_lst = ['AK']*2 + ['SAK']*3 + ['US-west_new']*3

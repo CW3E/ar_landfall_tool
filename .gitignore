@@ -3,6 +3,8 @@
 *.mp4
 *.nc
 *.grb
+
+data/precip*
 # ignore juypter checkpoint files
 .ipynb_checkpoints
 
