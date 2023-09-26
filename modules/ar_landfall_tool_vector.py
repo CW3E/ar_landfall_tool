@@ -39,7 +39,7 @@ import cmocean.cm as cmo
 # import personal modules
 import nclcmaps as nclc
 import cw3ecmaps as cw3e
-from constants import ivt_colors, plot_terrain, plot_cw3e_logo, get_every_other_vector, myround, load_prec_QPF_dataset
+from cw3e_tools import ivt_colors, plot_terrain, plot_cw3e_logo, get_every_other_vector, myround, load_prec_QPF_dataset
 
 class landfall_tool_vector:
     '''
@@ -110,7 +110,7 @@ class landfall_tool_vector:
         
         if self.loc == 'US-west_old':
             self.grant_info = 'FIRO/CA-AR Program'
-        elif self.loc == 'US-west_new':
+        elif self.loc == 'US-west':
             self.grant_info = 'FIRO/CA-AR Program and NSF #2052972'
         else:
             self.grant_info = 'NSF #2052972'
@@ -709,4 +709,5 @@ class landfall_tool_vector:
         
         fig.savefig('%s.%s' %(fname1, fmt), bbox_inches='tight', dpi=fig.dpi)
         fig.savefig('%s.%s' %(fname2, fmt), bbox_inches='tight', dpi=fig.dpi)
-        plt.show()
+        # close figure
+        plt.close(plt.gcf())

@@ -6,11 +6,15 @@ Description: a collection of useful constants, colors, useful plotting and loadi
 """
 
 import os
+import shutil
+import subprocess
 import xarray as xr
 import datetime
 import numpy as np
 import cartopy.crs as ccrs
 import cmocean.cm as cmo
+from PIL import Image
+import requests
 
 ivt_colors = {'250': (255./255.0, 174./255.0, 0./255.0), # orange
               '500': (236./255.0, 0./255.0, 7./255.0), # red 
@@ -72,11 +76,10 @@ def load_prec_QPF_dataset(forecast, model_init_date, date_string):
     
     if forecast == 'GEFS':
         ## download from NOMADS
-        url = 'https://nomads.ncep.noaa.gov/dods/gfs_0p25/gfs{0}/gfs_0p25_{1}z'.format(date, hr)
-        ds = xr.open_dataset(url, decode_times=False)
-        # subprocess.check_call(["../preprocess/download_QPF.sh", date, hr], shell=True) # downloads the latest QPF data
-        ds = ds.isel(time=7*8) # get 7-day QPF - the variable is already cumulative
-        prec = ds['apcpsfc']/25.4 # convert from mm to inches
+        subprocess.check_call(["../preprocess/download_QPF.sh", date, hr], shell=True) # downloads the latest QPF data
+        ds = xr.open_dataset('../preprocess/precip.grb', engine='cfgrib')
+        ds = ds.rename({'longitude': 'lon', 'latitude': 'lat'})
+        prec = ds['tp']/25.4 # convert from mm to inches
     else:
         mmdyhr_init = model_init_date.strftime('%m%d%H') # month-day-hr init date
         date1 = datetime.datetime.strptime(date_string, '%Y%m%d%H')
