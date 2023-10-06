@@ -38,7 +38,7 @@ import cmocean.cm as cmo
 
 # import personal modules
 import cw3ecmaps as cw3e
-from cw3e_tools import ivt_colors, plot_terrain, plot_cw3e_logo, get_every_other_vector, myround, load_prec_QPF_dataset
+from cw3e_tools import ivt_colors, plot_terrain, plot_cw3e_logo, get_every_other_vector, myround
 
 
 class landfall_tool_contour:

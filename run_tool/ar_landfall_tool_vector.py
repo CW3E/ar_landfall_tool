@@ -38,7 +38,7 @@ import cmocean.cm as cmo
 
 # import personal modules
 import cw3ecmaps as cw3e
-from cw3e_tools import ivt_colors, plot_terrain, plot_cw3e_logo, get_every_other_vector, myround, load_prec_QPF_dataset
+from cw3e_tools import ivt_colors, plot_terrain, plot_cw3e_logo, get_every_other_vector, myround
 
 class landfall_tool_vector:
     '''
@@ -74,7 +74,7 @@ class landfall_tool_vector:
             self.ensemble_name = 'ECMWF'
         else:
             print('Forecast product not available! Please choose either GEFS or ECMWF.')
-                  
+        print(fpath)          
         ## find the most recent file in the currect directory
         list_of_files = glob.glob(fpath+'*.nc')
         self.fname = max(list_of_files, key=os.path.getctime)
@@ -182,6 +182,27 @@ class landfall_tool_vector:
 
         self.dx = np.arange(myround(lonmin+londx, dux),(myround((lonmax-londx)+dux, dux)),dux)
         self.dy = np.arange(myround(latmin+latdy, duy),(myround((latmax-latdy)+duy, duy)),duy)
+        
+    def load_prec_QPF_dataset(self):
+        if self.forecast == 'GEFS':
+            # ## this method directly opens data from NOMADS
+            # date = self.model_init_date.strftime('%Y%m%d') # model init date
+            # hr = self.model_init_date.strftime('%H') # model init hour
+            # url = 'https://nomads.ncep.noaa.gov/dods/gfs_0p25/gfs{0}/gfs_0p25_{1}z'.format(date, hr)
+            # ds = xr.open_dataset(url, decode_times=False)
+            # ds = ds.isel(time=7*8) # get 7-day QPF - the variable is already cumulative
+            # prec = ds['apcpsfc']/25.4 # convert from mm to inches
+            
+            ## This method uses the downloaded data
+            ds = xr.open_dataset('precip_GFS', engine='cfgrib')
+            ds = ds.rename({'longitude': 'lon', 'latitude': 'lat'})
+            prec = ds['tp']/25.4 # convert from mm to inches
+        else:
+            var_lst = ['u10','lsm','msl','d2m','z','t2m','stl1', 'stl2', 'stl3', 'stl4', 'swvl4','swvl2', 'swvl3','sst','sp','v10','sd','skt', 'swvl1','siconc','tcwv','tcw']
+            ds = xr.open_dataset('precip_ECMWF', drop_variables=var_lst, engine='cfgrib', backend_kwargs={'filter_by_keys': {'typeOfLevel': 'surface'}})
+            prec = ds['tp']*39.3701 # convert from m to inches
+            prec = prec.rename({'longitude': 'lon', 'latitude': 'lat'}) # need to rename this to match GEFS
+        return prec
         
     def load_dataset(self, subset=True):
         ## load the forecast data
@@ -400,7 +421,7 @@ class landfall_tool_vector:
         ax = plot_terrain(ax, self.ext)
         
         ## Add 7-D QPF
-        self.prec = load_prec_QPF_dataset(self.forecast, self.model_init_date, self.date_string)
+        self.prec = self.load_prec_QPF_dataset()
         cmap, norm, bnds = cw3e.cmap('brian_qpf')
         self.qpflevs = bnds
         self.qpf = ax.contourf(self.prec.lon, self.prec.lat, self.prec.values,

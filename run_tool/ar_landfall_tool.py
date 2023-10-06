@@ -5,9 +5,17 @@ Description: For GFS or ECMWF, output .png files of ar landfall tool plot (conto
 """
 
 import os, sys
+from cw3e_tools import download_QPF_prec_dataset
 from ar_landfall_tool_contour import landfall_tool_contour
 from ar_landfall_tool_vector import landfall_tool_vector
 from ar_landfall_tool_IVT_mag import landfall_tool_IVT_magnitude
+
+## start by downloading/copying QPF dataset for both GEFS and ECMWF
+model_lst = ['ECMWF']
+for i, model in enumerate(model_lst):
+    print('Downloading {0} 7-d QPF data...'.format(model))
+    d = download_QPF_prec_dataset(model)
+    d.download_dataset()
 
 ptloc_lst = ['coast', 'inland'] + ['coast', 'foothills', 'inland']*2
 loc_lst = ['AK']*2 + ['SAK']*3 + ['US-west']*3
@@ -19,7 +27,7 @@ mag_type_lst = ['control', 'ensemble']
 for i, (ptloc, loc, ori) in enumerate(zip(ptloc_lst, loc_lst, ori_lst)):
     for j, thres in enumerate(threshold_lst):
         for k, model in enumerate(model_lst[0:2]): # only run the first two models for the vector tool
-
+            print('Running AR Landfall Vector Tool for {0}, {1}, {2}, {3}...'.format(model, thres, ptloc, loc))
             s = landfall_tool_vector(loc=loc, ptloc=ptloc, forecast=model, threshold=thres, orientation=ori)
             s.create_figure()
             
