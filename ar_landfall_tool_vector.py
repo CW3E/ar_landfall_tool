@@ -63,37 +63,21 @@ class landfall_tool_vector:
     
     '''
     
-    def __init__(self, loc, ptloc, forecast='GEFS', threshold=250, orientation='latitude'):
-        path_to_data = '/data/downloaded/SCRATCH/cw3eit_scratch/'
-        self.forecast = forecast
-        if forecast == 'GEFS':
-            fpath = path_to_data + 'GEFS/FullFiles/'
-            self.ensemble_name = 'GEFS'
-        elif forecast == 'ECMWF':
-            fpath = path_to_data + 'ECMWF/archive/' # will need to adjust when operational
-            self.ensemble_name = 'ECMWF'
-        else:
-            print('Forecast product not available! Please choose either GEFS or ECMWF.')
-        print(fpath)          
-        ## find the most recent file in the currect directory
-        list_of_files = glob.glob(fpath+'*.nc')
-        self.fname = max(list_of_files, key=os.path.getctime)
-        # pull the initialization date from the filename
-        regex = re.compile(r'\d+')
-        date_string = regex.findall(self.fname)
-        self.date_string = date_string[1]
+    def __init__(self, ds_pt, ds, prec, loc, ptloc, forecast='GEFS', threshold=250, orientation='latitude'):
+        self.date_string = ds_pt.model_init_date.strftime('%Y%m%d%H')
         self.model_init_date = datetime.datetime.strptime(self.date_string, '%Y%m%d%H')
-
-        ## read text file with points
         self.loc = loc
         self.ptloc = ptloc
-        textpts_fname = '/cw3e_ar-tools/data/{0}/latlon_{1}.txt'.format(self.loc, self.ptloc)
-        df = pd.read_csv(textpts_fname, header=None, sep=' ', names=['latitude', 'longitude'], engine='python')
-        df['longitude'] = df['longitude']*-1
-        self.df = df
-        self.lons = self.df['longitude'].values
-        self.lats = self.df['latitude'].values
+        self.lons = ds_pt.lon.values
+        self.lats = ds_pt.lat.values
         self.threshold = threshold
+        self.orientation = orientation
+        ds_pt = ds_pt.sel(forecast_hour=slice(0, 24*7)) # keep only the first seven days of the forecast
+        self.probability = ds_pt.sel(threshold=self.threshold)
+        self.duration_ds = ds_pt.duration
+        self.prec = prec
+        self.ds = ds
+        self.forecast = forecast
                   
         ## format dicts for plots
         self.fontsize = 12
@@ -103,9 +87,6 @@ class landfall_tool_vector:
                          'labelsize': self.fontsize-2, 'labelcolor': 'dimgray'}
         self.kw_quiver = {'headlength': 6, 'headaxislength': 4.5, 'headwidth': 4.5}
         self.IVT_units = 'kg m$^{-1}$ s$^{-1}$'
-        
-        ## info for plot orientation
-        self.orientation = orientation
         
         if self.loc == 'US-west_old':
             self.grant_info = 'FIRO/CA-AR Program'
@@ -181,90 +162,7 @@ class landfall_tool_vector:
             duy = 5
 
         self.dx = np.arange(myround(lonmin+londx, dux),(myround((lonmax-londx)+dux, dux)),dux)
-        self.dy = np.arange(myround(latmin+latdy, duy),(myround((latmax-latdy)+duy, duy)),duy)
-        
-    def load_prec_QPF_dataset(self):
-        if self.forecast == 'GEFS':
-            ## this method directly opens data from NOMADS
-            date = self.model_init_date.strftime('%Y%m%d') # model init date
-            hr = self.model_init_date.strftime('%H') # model init hour
-            url = 'https://nomads.ncep.noaa.gov/dods/gfs_0p25/gfs{0}/gfs_0p25_{1}z'.format(date, hr)
-            ds = xr.open_dataset(url, decode_times=False)
-            ds = ds.isel(time=7*8) # get 7-day QPF - the variable is already cumulative
-            prec = ds['apcpsfc']/25.4 # convert from mm to inches
-            
-            # ## This method uses the downloaded data
-            # ds = xr.open_dataset('precip_GFS', engine='cfgrib')
-            # ds = ds.rename({'longitude': 'lon', 'latitude': 'lat'})
-            # prec = ds['tp']/25.4 # convert from mm to inches
-        else:
-            var_lst = ['u10','lsm','msl','d2m','z','t2m','stl1', 'stl2', 'stl3', 'stl4', 'swvl4','swvl2', 'swvl3','sst','sp','v10','sd','skt', 'swvl1','siconc','tcwv','tcw']
-            ds = xr.open_dataset('precip_ECMWF', drop_variables=var_lst, engine='cfgrib', backend_kwargs={'filter_by_keys': {'typeOfLevel': 'surface'}})
-            prec = ds['tp']*39.3701 # convert from m to inches
-            prec = prec.rename({'longitude': 'lon', 'latitude': 'lat'}) # need to rename this to match GEFS
-        return prec
-        
-    def load_dataset(self, subset=True):
-        ## load the forecast data
-        ds = xr.open_dataset(self.fname)
-        ds = ds.assign_coords({"lon": (((ds.lon + 180) % 360) - 180)}) # Convert DataArray longitude coordinates from 0-359 to -180-179
-        ds = ds.sel(lon=slice(-180., -1)) # keep only western hemisphere
-        if self.forecast == 'ECMWF':
-            ds = ds.rename({'forecast_time': 'forecast_hour'}) # need to rename this to match GEFS
-            ds = ds.assign_coords({"forecast_hour": (ds.forecast_hour*3)}) # convert forecast time to forecast hour
-        
-        self.ndays = str(int(ds.forecast_hour.values.max()/24.)) # get max number of forecast days
-        
-        
-        ds = ds.sel(forecast_hour=slice(0, 24*7)) # keep only the first seven days of the forecast
-        
-        if subset == True: # subset to the latitude points from txt file
-            # subset ds to the select points
-            self.lons = self.df['longitude'].values
-            self.lats = self.df['latitude'].values
-            x = xr.DataArray(self.lons, dims=['location'])
-            y = xr.DataArray(self.lats, dims=['location'])
-        
-            ds = ds.sel(lon=x, lat=y, method='nearest')
-        
-        else:
-            ds = ds.mean(['forecast_hour', 'ensemble'])
-            ds = ds.where(ds.IVT >= 200)  # is there a threshold set for masking?           
-        
-        return ds
-        
-    def calc_ivt_duration(self):
-        
-        ds = self.load_dataset(subset=True)
-        thresholds = [250, 500, 750, 1000]
-        duration_lst = []
-        for i, thres in enumerate(thresholds):
-            tmp = ds.where(ds.IVT >= thres) # find where IVT exceeds threshold
-            duration = tmp.count(dim='forecast_hour')*3 # three hour time intervals
-            duration_lst.append(duration)
-        
-        # merge duration datasets
-        duration_ds = xr.concat(duration_lst, pd.Index(thresholds, name="duration"))
-        
-        return duration_ds    
-        
-    def calc_ivt_probability(self):
-        
-        ds = self.load_dataset(subset=True)
-
-        ## calculate probability IVT >= threshold
-        data_size = ds.IVT.ensemble.shape
-
-        # sum the number of ensembles where IVT exceeds threshold
-        self.probability = (ds.IVT.where(ds.IVT >= self.threshold).count(dim='ensemble')) / data_size
-        uvec = ds.uIVT.mean('ensemble') # get the ensemble mean uIVT
-        vvec = ds.vIVT.mean('ensemble') # get the ensemble mean vIVT
-        self.control = ds.IVT.mean('ensemble') # get the ensemble mean IVT
-        
-        # normalize vectors
-        self.u = uvec / self.control 
-        self.v = vvec / self.control
-        
+        self.dy = np.arange(myround(latmin+latdy, duy),(myround((latmax-latdy)+duy, duy)),duy)    
         
     def plot_duration_cbar(self, cbax):
         # create custom colorbar for duration plot
@@ -286,14 +184,12 @@ class landfall_tool_vector:
             cb.ax.set_yticklabels(["{0}".format(i) for i in cb.get_ticks()], **self.kw_ticklabels)
         
     def plot_vector_landfall_latitude(self, ax):
-        
-        self.calc_ivt_probability() # run the calculation
         x = self.probability.forecast_hour / 24 # convert forecast hour to forecast day
         y = self.probability.lat
-        data = get_every_other_vector(np.flipud(np.rot90(self.probability.values))) # rotate data 90 degrees and flip up down
-        uvec = get_every_other_vector(np.flipud(np.rot90(self.u.values)))
-        vvec = get_every_other_vector(np.flipud(np.rot90(self.v.values)))
-        ctrl = np.flipud(np.rot90(self.control.values))
+        data = get_every_other_vector(np.flipud(np.rot90(self.probability.probability.values))) # rotate data 90 degrees and flip up down
+        uvec = get_every_other_vector(np.flipud(np.rot90(self.probability.u.values)))
+        vvec = get_every_other_vector(np.flipud(np.rot90(self.probability.v.values)))
+        ctrl = np.flipud(np.rot90(self.probability.control.values))
         
         # Vectors   
         cmap, norm, bnds = cw3e.cmap('ivt_vector')
@@ -345,19 +241,17 @@ class landfall_tool_vector:
         ax.set_ylabel("Latitude along West Coast", fontsize=self.fontsize)
         ax.set_xlabel(self.xlbl, fontsize=self.fontsize)
         ax.set_title(self.title, loc='right', fontsize=self.fontsize)
-        ax.set_title('(a) 7-d {0} Ens. Mean IVT'.format(self.ensemble_name), loc='left', fontsize=self.fontsize)
+        ax.set_title('(a) 7-d {0} Ens. Mean IVT'.format(self.forecast), loc='left', fontsize=self.fontsize)
         
         return ax
     
     def plot_vector_landfall_longitude(self, ax):
-        
-        self.calc_ivt_probability() # run the calculation
         x = self.probability.lon
         y = self.probability.forecast_hour / 24 # convert forecast hour to forecast day
-        data = get_every_other_vector(self.probability.values)
-        uvec = get_every_other_vector(self.u.values)
-        vvec = get_every_other_vector(self.v.values)
-        ctrl = self.control.values
+        data = get_every_other_vector(self.probability.probability.values)
+        uvec = get_every_other_vector(self.probability.u.values)
+        vvec = get_every_other_vector(self.probability.v.values)
+        ctrl = self.probability.control.values
         
         ## Quiver
         cmap, norm, bnds = cw3e.cmap('ivt_vector')
@@ -421,19 +315,14 @@ class landfall_tool_vector:
         ax = plot_terrain(ax, self.ext)
         
         ## Add 7-D QPF
-        self.prec = self.load_prec_QPF_dataset()
         cmap, norm, bnds = cw3e.cmap('brian_qpf')
         self.qpflevs = bnds
         self.qpf = ax.contourf(self.prec.lon, self.prec.lat, self.prec.values,
                          cmap=cmap, norm=norm, levels=self.qpflevs, alpha=0.8, transform=datacrs)
         
-        ## Add control ensemble time-averaged IVT
-        ds = self.load_dataset(subset=False)
-        
-        Q = ax.quiver(ds.lon, ds.lat, ds.uIVT, ds.vIVT, transform=datacrs, 
+        Q = ax.quiver(self.ds.lon, self.ds.lat, self.ds.uIVT, self.ds.vIVT, transform=datacrs, 
                       color='k', regrid_shape=15,
-                      angles='xy', scale_units='xy', scale=250, units='xy')
-        
+                      angles='xy', scale_units='xy', scale=250, units='xy')        
 
         # Add map features (continents and country borders)
         # ax.add_feature(cfeature.LAND, facecolor='0.9')      
@@ -478,7 +367,7 @@ class landfall_tool_vector:
     
             
         if self.orientation == 'longitude':
-            txt = '7-d {0} Ensemble Mean IVT'.format(self.ensemble_name) 
+            txt = '7-d {0} Ensemble Mean IVT'.format(self.forecast) 
             ax.set_title(txt, loc='left', fontsize=self.fontsize)
             ax.set_title(self.title, loc='right', fontsize=self.fontsize)
             qk_x = 0.82
@@ -500,23 +389,22 @@ class landfall_tool_vector:
     
     def plot_duration_latitude(self, ax):
     
-        duration_ds = self.calc_ivt_duration()
         colors = [ivt_colors['250'], ivt_colors['500'], ivt_colors['750'], ivt_colors['1000']]
         thresholds = [250., 500., 750., 1000.]
-        y = duration_ds.lat.values
+        y = self.duration_ds.lat.values
         self.custom_lines = [] # for the custom legend
         self.legend_txt = []
         
         for i, thres in enumerate(thresholds):
-            tmp = duration_ds.sel(duration=thres)
+            tmp = self.duration_ds.sel(threshold=thres)
             self.custom_lines.append(Line2D([0], [0], color=colors[i], lw=0.8))
             self.legend_txt.append('$\geq$ {0}'.format(thres))
             # add ensemble mean as thicker line
-            x = tmp.IVT.mean('ensemble').values 
+            x = tmp.mean('ensemble').values 
             ax.plot(x, y, color=colors[i], linewidth=1)
 
-            for j, ens in enumerate(range(len(duration_ds.ensemble))):
-                x = tmp.sel(ensemble=ens).IVT.values
+            for j, ens in enumerate(range(len(self.duration_ds.ensemble))):
+                x = tmp.sel(ensemble=ens).values
                 ax.plot(x, y, color=colors[i], linewidth=0.25, alpha=0.4)
 
                 ## xtick and ytick labels, locations
@@ -550,24 +438,22 @@ class landfall_tool_vector:
         return ax
     
     def plot_duration_longitude(self, ax):
-    
-        duration_ds = self.calc_ivt_duration()
         colors = [ivt_colors['250'], ivt_colors['500'], ivt_colors['750'], ivt_colors['1000']]
         thresholds = [250., 500., 750., 1000.]
-        x = duration_ds.lon.values
+        x = self.duration_ds.lon.values
         self.custom_lines = [] # for the custom legend
         self.legend_txt = []
         
         for i, thres in enumerate(thresholds):
-            tmp = duration_ds.sel(duration=thres)
+            tmp = self.duration_ds.sel(duration=thres)
             self.custom_lines.append(Line2D([0], [0], color=colors[i], lw=0.6))
             self.legend_txt.append('$\geq$ {0}'.format(thres))
             # add ensemble mean as thicker line
-            y = tmp.IVT.mean('ensemble').values 
+            y = tmp.mean('ensemble').values 
             ax.plot(x, y, color=colors[i], linewidth=1)
 
-            for j, ens in enumerate(range(len(duration_ds.ensemble))):
-                y = tmp.sel(ensemble=ens).IVT.values
+            for j, ens in enumerate(range(len(self.duration_ds.ensemble))):
+                y = tmp.sel(ensemble=ens).values
                 ax.plot(x, y, color=colors[i], linewidth=0.25, alpha=0.4)
 
                 ## xtick and ytick labels, locations

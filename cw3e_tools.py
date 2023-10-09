@@ -145,7 +145,7 @@ class load_datasets:
             date2 = date2.strftime('%m%d%H') # valid date
             fpath = '/data/downloaded/Forecasts/ECMWF/NRT_data/{0}{1}/'.format(date, hr)
             fname = 'S1D{0}00{1}001'.format(mmdyhr_init, date2)
-            shutil.copy(fpath+fname, '../data/precip_ECMWF') # copy file over to data folder
+            shutil.copy(fpath+fname, '/cw3e_ar-tools/data/precip_ECMWF') # copy file over to data folder
             
             
     def load_prec_QPF_dataset(self):
@@ -166,7 +166,7 @@ class load_datasets:
         
         else:
             var_lst = ['u10','lsm','msl','d2m','z','t2m','stl1', 'stl2', 'stl3', 'stl4', 'swvl4','swvl2', 'swvl3','sst','sp','v10','sd','skt', 'swvl1','siconc','tcwv','tcw']
-            ds = xr.open_dataset('../data/precip_ECMWF', drop_variables=var_lst, engine='cfgrib', backend_kwargs={'filter_by_keys': {'typeOfLevel': 'surface'}})
+            ds = xr.open_dataset('/cw3e_ar-tools/data/precip_ECMWF', drop_variables=var_lst, engine='cfgrib', backend_kwargs={'filter_by_keys': {'typeOfLevel': 'surface'}})
             prec = ds['tp']*39.3701 # convert from m to inches
             prec = prec.rename({'longitude': 'lon', 'latitude': 'lat'}) # need to rename this to match GEFS
         
@@ -174,7 +174,7 @@ class load_datasets:
 
     def get_lat_lons_from_txt_file(self):
         ## read text file with points
-        textpts_fname = '../data/{0}/latlon_{1}.txt'.format(self.loc, self.ptloc)
+        textpts_fname = '/cw3e_ar-tools/data/{0}/latlon_{1}.txt'.format(self.loc, self.ptloc)
         df = pd.read_csv(textpts_fname, header=None, sep=' ', names=['latitude', 'longitude'], engine='python')
         df['longitude'] = df['longitude']*-1
         df = df
@@ -194,8 +194,8 @@ class load_datasets:
             ds = ds.rename({'ensembles': 'ensemble'}) # need to rename this to match GEFS/ECMWF
 
         ## Calculate IVT for the maps
-        ds1 = ds.mean(['forecast_hour', 'ensemble'])
-        ds1 = ds1.IVT.where(ds1.IVT >= 250)
+        ds1 = ds.sel(forecast_hour=slice(0, 24*7)).mean(['forecast_hour', 'ensemble'])
+        ds1 = ds1.where(ds1.IVT >= 250)
 
         # subset ds to the select points
         self.get_lat_lons_from_txt_file()
@@ -204,7 +204,7 @@ class load_datasets:
         ds = ds.sel(lon=x, lat=y, method='nearest')
 
         ## Calculate probability and duration IVT >= threshold
-        thresholds = [150., 250., 500., 750.]
+        thresholds = [150, 250, 500, 750, 1000]
         probability_lst = []
         duration_lst = []
         for i, thres in enumerate(thresholds):

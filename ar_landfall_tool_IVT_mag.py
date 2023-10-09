@@ -53,7 +53,7 @@ class landfall_tool_IVT_magnitude:
     forecast : str
         name of the forecast product - options include GEFS, ECMWF, ECMWF-GEFS, and West-WRF
     mag_type : str
-        choose the magnitude type to calculate - Ensemble Mean or control (ensemble = 0)
+        choose the magnitude type to calculate - ensemble or control (ensemble = 0)
   
     Returns
     -------
@@ -62,50 +62,21 @@ class landfall_tool_IVT_magnitude:
     
     '''
     
-    def __init__(self, loc, ptloc, forecast='GEFS', mag_type='control', orientation='latitude'):
-        path_to_data = '/data/downloaded/SCRATCH/cw3eit_scratch/'
-        self.forecast = forecast
-        self.mag_type = mag_type
-        if forecast == 'GEFS':
-            fpath = path_to_data + 'GEFS/FullFiles/'
-            self.ensemble_name = 'GEFS'
-        elif forecast == 'ECMWF':
-            fpath = path_to_data + 'ECMWF/archive/' 
-            self.ensemble_name = 'ECMWF'
-        elif forecast == 'W-WRF':
-            fpath = '/data/downloaded/WWRF-NRT/2023-2024/Ensemble_IVT/' 
-            self.ensemble_name = 'West-WRF'
-        elif forecast == 'ECMWF-GEFS':
-            fpath = path_to_data + 'ECMWF/archive/' 
-            self.ensemble_name = 'ECMWF-GEFS'
-            
-        else:
-            print('Forecast product not available! Please choose either GEFS, ECMWF, ECMWF-GEFS, or W-WRF.')
-                  
-        ## find the most recent file in the currect directory
-        list_of_files = glob.glob(fpath+'*.nc')
-        self.fname = max(list_of_files, key=os.path.getctime)
-        # pull the initialization date from the filename
-        regex = re.compile(r'\d+')
-        date_string = regex.findall(self.fname)
-        if self.forecast == 'W-WRF':
-            self.date_string = date_string[2]
-        else:
-            self.date_string = date_string[1]
+    def __init__(self, ds_pt, loc, ptloc, forecast='GEFS', mag_type='control', orientation='latitude'):
+        self.date_string = ds_pt.model_init_date.strftime('%Y%m%d%H')
         self.model_init_date = datetime.datetime.strptime(self.date_string, '%Y%m%d%H')
-        
-        # pull the name of the matching GEFS for ECMWF-GEFS
-        self.fname2 = path_to_data + 'GEFS/FullFiles/IVT_Full_{0}.nc'.format(self.date_string)
-        
-        ## read text file with points
         self.loc = loc
         self.ptloc = ptloc
-        textpts_fname = '/cw3e_ar-tools/data/{0}/latlon_{1}.txt'.format(self.loc, self.ptloc)
-        df = pd.read_csv(textpts_fname, header=None, sep=' ', names=['latitude', 'longitude'], engine='python')
-        df['longitude'] = df['longitude']*-1
-        self.df = df
-        self.lons = self.df['longitude'].values
-        self.lats = self.df['latitude'].values
+        self.lons = ds_pt.lon.values
+        self.lats = ds_pt.lat.values
+        self.orientation = orientation
+        self.forecast = forecast
+        self.mag_type = mag_type
+        self.magnitude = ds_pt[self.mag_type]
+        if self.mag_type == 'ensemble_mean':
+            self.name = 'Ensemble Mean'
+        else:
+            self.name = 'Control'
                   
         ## format dicts for plots
         self.fontsize = 12
@@ -114,10 +85,6 @@ class landfall_tool_IVT_magnitude:
         self.kw_ticks = {'length': 4, 'width': 0.5, 'pad': 2, 'color': 'black',
                          'labelsize': self.fontsize-2, 'labelcolor': 'dimgray'}
         self.IVT_units = 'kg m$^{-1}$ s$^{-1}$'
-        
-        
-        ## info for plot orientation
-        self.orientation = orientation
         
         if self.loc == 'US-west_old':
             self.grant_info = 'FIRO/CA-AR Program'
@@ -194,44 +161,14 @@ class landfall_tool_IVT_magnitude:
 
         self.dx = np.arange(myround(lonmin+londx, dux),(myround((lonmax-londx)+dux, dux)),dux)
         self.dy = np.arange(myround(latmin+latdy, duy),(myround((latmax-latdy)+duy, duy)),duy)
-        
-    def calc_ivt_magnitude(self, fname, forecast):
-        ## load the forecast data
-        ds = xr.open_dataset(fname)
-        ds = ds.assign_coords({"lon": (((ds.lon + 180) % 360) - 180)}) # Convert DataArray longitude coordinates from 0-359 to -180-179
-        ds = ds.sel(lon=slice(-180., -1)) # keep only western hemisphere
-        if forecast == 'ECMWF':
-            ds = ds.rename({'forecast_time': 'forecast_hour'}) # need to rename this to match GEFS
-            ds = ds.assign_coords({"forecast_hour": (ds.forecast_hour*3)}) # convert forecast time to forecast hour
-        elif forecast == 'W-WRF':
-            ds = ds.rename({'ensembles': 'ensemble'}) # need to rename this to match GEFS/ECMWF
-        
-        self.ndays = str(int(ds.forecast_hour.values.max()/24.)) # get max number of forecast days
-        
-        # subset ds to the select points
-        x = xr.DataArray(self.lons, dims=['location'])
-        y = xr.DataArray(self.lats, dims=['location'])
-        ds = ds.sel(lon=x, lat=y, method='nearest')
-    
-        ## calculate IVT magnitude
-        if self.mag_type == "control":
-            magnitude = ds.IVT.sel(ensemble=0)
-        elif self.mag_type == "ensemble":
-            magnitude = ds.IVT.mean(dim='ensemble')
-            
-        return magnitude
             
     def plot_magnitude_latitude(self, ax):
         
         if self.forecast == 'ECMWF-GEFS':
-            ECMWF = self.calc_ivt_magnitude(self.fname, forecast='ECMWF') # run the calculation for ECMWF
-            GFS = self.calc_ivt_magnitude(self.fname2, forecast='GEFS') # run the calculation for GFS
-            self.magnitude = ECMWF - GFS # find the difference
             cmap = plt.cm.get_cmap('BrBG')
             self.cflevs = np.arange(-275, 300, 25)
             norm = mcolors.BoundaryNorm(self.cflevs, cmap.N)
         else:
-            self.magnitude = self.calc_ivt_magnitude(self.fname, forecast=self.forecast) # run the calculation for model
             cmap, norm, bnds = cw3e.cmap('ivt_magnitude')
             self.cflevs = bnds
         
@@ -282,21 +219,17 @@ class landfall_tool_IVT_magnitude:
         ## labels and subtitles
         ax.set_ylabel("Latitude along West Coast", fontsize=self.fontsize)
         ax.set_xlabel(self.xlbl, fontsize=self.fontsize)
-        ax.set_title('{0}-d {1} {2} IVT ({3})'.format(self.ndays, self.ensemble_name, self.mag_type, self.IVT_units), loc='left', fontsize=self.fontsize)
+        ax.set_title('16-d {0} {1} IVT ({2})'.format(self.forecast, self.name, self.IVT_units), loc='left', fontsize=self.fontsize)
         
         return ax
     
     def plot_magnitude_longitude(self, ax):
         
         if self.forecast == 'ECMWF-GEFS':
-            ECMWF = self.calc_ivt_magnitude(self.fname, forecast='ECMWF') # run the calculation for ECMWF
-            GFS = self.calc_ivt_magnitude(self.fname2, forecast='GEFS') # run the calculation for GFS
-            self.magnitude = ECMWF - GFS # find the difference
             cmap = plt.cm.get_cmap('BrBG')
             self.cflevs = np.arange(-275, 300, 25)
             norm = mcolors.BoundaryNorm(self.cflevs, cmap.N)
         else:
-            self.magnitude = self.calc_ivt_magnitude(self.fname, self.forecast) # run the calculation for model
             cmap, norm, bnds = cw3e.cmap('ivt_magnitude')
             self.cflevs = bnds
         
@@ -396,7 +329,7 @@ class landfall_tool_IVT_magnitude:
             ax.plot(x, y, 'ko', markersize=mk_size, transform=datacrs)
             
         if self.orientation == 'longitude':
-            txt = '{0}-d {1} {2} IVT ({3})'.format(self.ndays, self.ensemble_name, self.mag_type, self.IVT_units) 
+            txt = '16-d {0} {1} IVT ({2})'.format(self.forecast, self.name, self.IVT_units) 
             ax.set_title(txt, loc='left', fontsize=self.fontsize)
         
         ax.set_title(self.title, loc='right', fontsize=self.fontsize)
