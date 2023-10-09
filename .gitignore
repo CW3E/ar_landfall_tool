@@ -3,7 +3,7 @@
 *.mp4
 *.nc
 *.grb
-
+__pycache__/*
 data/precip*
 # ignore juypter checkpoint files
 .ipynb_checkpoints
