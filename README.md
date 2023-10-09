@@ -14,11 +14,11 @@ To run all three regions with a singularity container:
 
 ```bash
 ## runs plots for US-West coast
-singularity exec --bind /data:/data,/home/dnash/repos/cw3e_ar-tools:/cw3e_ar-tools,/work:/work,/common:/common -e ar_landfall_tool.sif /opt/conda/bin/python /home/dnash/repos/cw3e_ar-tools/ar_landfall_tool_US-West.py
+singularity exec --bind /data:/data,/home/dnash/repos/cw3e_ar-tools:/cw3e_ar-tools,/work:/work,/common:/common -e ar_landfall_tool.sif /opt/conda/bin/python /home/dnash/repos/cw3e_ar-tools/run_tool_US-West.py
 
 ## runs plots for southern Alaska coast
-singularity exec --bind /data:/data,/home/dnash/repos/cw3e_ar-tools:/cw3e_ar-tools,/work:/work,/common:/common -e ar_landfall_tool.sif /opt/conda/bin/python /home/dnash/repos/cw3e_ar-tools/ar_landfall_tool_AK-south.py
+singularity exec --bind /data:/data,/home/dnash/repos/cw3e_ar-tools:/cw3e_ar-tools,/work:/work,/common:/common -e ar_landfall_tool.sif /opt/conda/bin/python /home/dnash/repos/cw3e_ar-tools/run_tool_AK-south.py
 
 ## runs plots for western Alaska coast
-singularity exec --bind /data:/data,/home/dnash/repos/cw3e_ar-tools:/cw3e_ar-tools,/work:/work,/common:/common -e ar_landfall_tool.sif /opt/conda/bin/python /home/dnash/repos/cw3e_ar-tools/ar_landfall_tool_AK-west.py
+singularity exec --bind /data:/data,/home/dnash/repos/cw3e_ar-tools:/cw3e_ar-tools,/work:/work,/common:/common -e ar_landfall_tool.sif /opt/conda/bin/python /home/dnash/repos/cw3e_ar-tools/run_tool_AK-west.py
 ```

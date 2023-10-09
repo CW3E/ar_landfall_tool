@@ -1,5 +1,5 @@
 """
-Filename:    ar_landfall_tool_US-West.py
+Filename:    run_tool_US-West.py
 Author:      Deanna Nash, dnash@ucsd.edu
 Description: For GFS or ECMWF, output .png files of ar landfall tool plot (contour and vector) for different IVT thresholds and coastal, foothill and inland points
 """
