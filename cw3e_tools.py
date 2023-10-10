@@ -137,7 +137,7 @@ class load_datasets:
         if self.forecast == 'GEFS':
             ## download from NOMADS
             print(date, hr)
-            subprocess.check_call(["../download_QPF.sh", date, hr], shell=True) # downloads the latest QPF data
+            subprocess.check_call(["download_QPF.sh", date, hr], shell=True) # downloads the latest QPF data
         else:
             mmdyhr_init = self.model_init_date.strftime('%m%d%H') # month-day-hr init date
             date1 = datetime.datetime.strptime(self.date_string, '%Y%m%d%H')
@@ -149,7 +149,7 @@ class load_datasets:
             
             
     def load_prec_QPF_dataset(self):
-        self.download_QPF_dataset()
+        
         if self.forecast == 'GEFS':
             ## this method directly opens data from NOMADS
             date = self.model_init_date.strftime('%Y%m%d') # model init date
@@ -160,11 +160,13 @@ class load_datasets:
             prec = ds['apcpsfc']/25.4 # convert from mm to inches
 
         #     ## This method uses the downloaded data
+        #     self.download_QPF_dataset()
         #     ds = xr.open_dataset('precip_GFS.grb', engine='cfgrib', backend_kwargs={"indexpath": ""})
         #     ds = ds.rename({'longitude': 'lon', 'latitude': 'lat'})
         #     prec = ds['tp']/25.4 # convert from mm to inches
         
         else:
+            self.download_QPF_dataset()
             var_lst = ['u10','lsm','msl','d2m','z','t2m','stl1', 'stl2', 'stl3', 'stl4', 'swvl4','swvl2', 'swvl3','sst','sp','v10','sd','skt', 'swvl1','siconc','tcwv','tcw']
             ds = xr.open_dataset('/cw3e_ar-tools/data/precip_ECMWF', drop_variables=var_lst, engine='cfgrib', backend_kwargs={'filter_by_keys': {'typeOfLevel': 'surface'}})
             prec = ds['tp']*39.3701 # convert from m to inches

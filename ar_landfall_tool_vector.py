@@ -445,7 +445,7 @@ class landfall_tool_vector:
         self.legend_txt = []
         
         for i, thres in enumerate(thresholds):
-            tmp = self.duration_ds.sel(duration=thres)
+            tmp = self.duration_ds.sel(threshold=thres)
             self.custom_lines.append(Line2D([0], [0], color=colors[i], lw=0.6))
             self.legend_txt.append('$\geq$ {0}'.format(thres))
             # add ensemble mean as thicker line

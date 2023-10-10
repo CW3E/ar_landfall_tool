@@ -9,7 +9,9 @@ from cw3e_tools import load_datasets
 from ar_landfall_tool_contour import landfall_tool_contour
 from ar_landfall_tool_vector import landfall_tool_vector
 from ar_landfall_tool_IVT_mag import landfall_tool_IVT_magnitude
+from datetime import datetime
 
+startTime = datetime.now() # get start time of script
 loc = 'SAK'
 ori = 'longitude'
 model_lst = ['GEFS', 'ECMWF', 'W-WRF', 'ECMWF-GEFS']
@@ -48,3 +50,5 @@ for i, (model, ptloc) in enumerate(zip(model_lst, ptloc_lst)):
         if model == 'ECMWF' or model == 'GEFS':
             s = landfall_tool_vector(ds_pt=ds_pt, ds=ds, prec=prec, loc=loc, ptloc=ptloc, forecast=model, threshold=thres, orientation=ori)
             s.create_figure()
+            
+print('Time to execute:', datetime.now() - startTime)

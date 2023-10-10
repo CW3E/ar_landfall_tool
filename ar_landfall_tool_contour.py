@@ -331,7 +331,7 @@ class landfall_tool_contour:
             ax.plot(x, y, 'ko', markersize=mk_size, transform=datacrs)
             
         if self.orientation == 'longitude':
-            txt = '{0}-d {1} Probability of IVT $\geq$ {2} {3}'.format(self.ndays, self.forecast, self.threshold, self.IVT_units) 
+            txt = '16-d {0} Probability of IVT $\geq$ {1} {2}'.format(self.forecast, self.threshold, self.IVT_units) 
             ax.set_title(txt, loc='left', fontsize=self.fontsize)
         
         ax.set_title(self.title, loc='right', fontsize=self.fontsize)
