@@ -15,6 +15,7 @@ startTime = datetime.now() # get start time of script
 loc_lst = ['US-west']*3 + ['SAK']*3 + ['AK']*2
 ori_lst = ['latitude']*3 + ['longitude']*3 + ['latitude']*2
 model = sys.argv[0]
+print(model)
 ptloc_lst = ['coast', 'foothills', 'inland']*2 + ['coast', 'inland']
 threshold_lst = [150, 250, 500, 750]
 
