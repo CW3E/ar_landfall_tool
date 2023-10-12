@@ -26,8 +26,24 @@ for i, (loc, ori, ptloc) in enumerate(zip(loc_lst, ori_lst, ptloc_lst)):
     ### Create Intermediate Data ###
     ################################
     ## load the data - this loads and calculates for all metrics and IVT thresholds for the given model and pt location
-    s = load_datasets(model, loc, ptloc)
-    ds_pt, ds = s.calc_ivt_vars()
+    if model == 'ECMWF-GEFS':   
+        s = load_datasets('ECMWF', loc, ptloc)
+        ds_pt_ECMWF, ds_ECMWF = s.calc_ivt_vars()
+        model_init_date = ds_pt_ECMWF.model_init_date
+        date_string = model_init_date.strftime('%Y%m%d%H')
+        path_to_data = '/data/downloaded/SCRATCH/cw3eit_scratch/'
+        fname = path_to_data + 'GEFS/FullFiles/IVT_Full_{0}.nc'.format(date_string)
+
+        s = load_datasets('GEFS', loc, ptloc, fname)
+        ds_pt_GEFS, ds_GEFS = s.calc_ivt_vars()
+
+        ## subtract ECMWF - GEFS
+        ds_pt = ds_pt_ECMWF-ds_pt_GEFS
+        ds = ds_ECMWF-ds_GEFS
+        
+    else:
+        s = load_datasets(model, loc, ptloc)
+        ds_pt, ds = s.calc_ivt_vars()
     
     if model == 'ECMWF' or model == 'GEFS':
         prec = s.load_prec_QPF_dataset()
