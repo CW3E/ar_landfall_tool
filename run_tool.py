@@ -1,7 +1,7 @@
 """
-Filename:    run_tool_AK-south.py
+Filename:    run_tool.py
 Author:      Deanna Nash, dnash@ucsd.edu
-Description: For GFS or ECMWF, output .png files of ar landfall tool plot (contour and vector) for different IVT thresholds and coastal, foothill and inland points
+Description: For GEFS, ECMWF, W-WRF, or 'ECMWF-GEFS': output .png files of ar landfall tool plot (contour and vector) for different IVT thresholds and coastal, foothill and inland points
 """
 
 import os, sys
@@ -12,14 +12,15 @@ from ar_landfall_tool_IVT_mag import landfall_tool_IVT_magnitude
 from datetime import datetime
 
 startTime = datetime.now() # get start time of script
-loc = 'SAK'
-ori = 'longitude'
-model_lst = ['GEFS', 'ECMWF', 'W-WRF', 'ECMWF-GEFS']
-ptloc_lst = ['coast', 'foothills', 'inland']
+loc_lst = ['US-west']*3 + ['SAK']*3 + ['AK']*2
+ori_lst = ['latitude']*3 + ['longitude']*3 + ['latitude']*2
+model = sys.argv[0]
+ptloc_lst = ['coast', 'foothills', 'inland']*2 + ['coast', 'inland']
 threshold_lst = [150, 250, 500, 750]
 
 # for each model and point location, load the data, then calculate each metric
-for i, (model, ptloc) in enumerate(zip(model_lst, ptloc_lst)):
+for i, (loc, ori, ptloc) in enumerate(zip(loc_lst, ori_lst, ptloc_lst)):
+    print(loc, ori, ptloc)
     
     ################################
     ### Create Intermediate Data ###
@@ -50,5 +51,5 @@ for i, (model, ptloc) in enumerate(zip(model_lst, ptloc_lst)):
         if model == 'ECMWF' or model == 'GEFS':
             s = landfall_tool_vector(ds_pt=ds_pt, ds=ds, prec=prec, loc=loc, ptloc=ptloc, forecast=model, threshold=thres, orientation=ori)
             s.create_figure()
-            
+
 print('Time to execute:', datetime.now() - startTime)
