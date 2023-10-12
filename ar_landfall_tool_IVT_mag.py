@@ -63,6 +63,7 @@ class landfall_tool_IVT_magnitude:
     '''
     
     def __init__(self, ds_pt, loc, ptloc, forecast='GEFS', mag_type='control', orientation='latitude'):
+        self.path_to_out = '/home/cw3eit/ARPortal/gefs/scripts/ar_landfall_tool/figs/'
         self.date_string = ds_pt.model_init_date.strftime('%Y%m%d%H')
         self.model_init_date = datetime.datetime.strptime(self.date_string, '%Y%m%d%H')
         self.loc = loc
@@ -339,8 +340,8 @@ class landfall_tool_IVT_magnitude:
     
     def create_figure(self):
         # GEFS_LandfallTool_Control_coast_current.png
-        fname1 = '/cw3e_ar-tools/figs/{0}/{1}_LandfallTool_{2}_{3}_current'.format(self.loc, self.forecast, self.mag_type, self.ptloc)
-        fname2 = '/cw3e_ar-tools/figs/{0}/{1}_LandfallTool_{2}_{3}_{4}'.format(self.loc, self.forecast, self.mag_type, self.ptloc, self.date_string)
+        fname1 = self.path_to_out+'{0}/{1}_LandfallTool_{2}_{3}_current'.format(self.loc, self.forecast, self.mag_type, self.ptloc)
+        fname2 = self.path_to_out+'{0}/{1}_LandfallTool_{2}_{3}_{4}'.format(self.loc, self.forecast, self.mag_type, self.ptloc, self.date_string)
         fmt = 'png'
         
         # get tick and label information

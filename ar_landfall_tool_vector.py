@@ -64,6 +64,7 @@ class landfall_tool_vector:
     '''
     
     def __init__(self, ds_pt, ds, prec, loc, ptloc, forecast='GEFS', threshold=250, orientation='latitude'):
+        self.path_to_out = '/home/cw3eit/ARPortal/gefs/scripts/ar_landfall_tool/figs/'
         self.date_string = ds_pt.model_init_date.strftime('%Y%m%d%H')
         self.model_init_date = datetime.datetime.strptime(self.date_string, '%Y%m%d%H')
         self.loc = loc
@@ -477,8 +478,8 @@ class landfall_tool_vector:
         return ax
     
     def create_figure(self):
-        fname1 = '/cw3e_ar-tools/figs/{0}/{1}_LandfallTool_Vectors_{2}_{3}_current'.format(self.loc, self.forecast, self.threshold, self.ptloc)
-        fname2 = '/cw3e_ar-tools/figs/{0}/{1}_LandfallTool_Vectors_{2}_{3}_{4}'.format(self.loc, self.forecast, self.threshold, self.ptloc, self.date_string)
+        fname1 = self.path_to_out+'{0}/{1}_LandfallTool_Vectors_{2}_{3}_current'.format(self.loc, self.forecast, self.threshold, self.ptloc)
+        fname2 = self.path_to_out+'{0}/{1}_LandfallTool_Vectors_{2}_{3}_{4}'.format(self.loc, self.forecast, self.threshold, self.ptloc, self.date_string)
         fmt = 'png'
         
         # get tick and label information
