@@ -14,14 +14,14 @@ To run all three regions with a singularity container:
 
 ```bash
 ## runs plots for GEFS
-singularity exec --bind /data:/data,/home:/home,/work:/work,/common:/common -e ar_landfall_tool.sif /opt/conda/bin/python /home/cw3eit/ARPortal/gefs/scripts/ar_landfall_tool/run_tool.py "GEFS"
+singularity exec --bind /data:/data,/home:/home,/work:/work,/common:/common -e /data/projects/containers/ar_landfall_tool/ar_landfall_tool.sif /opt/conda/bin/python /home/cw3eit/ARPortal/gefs/scripts/ar_landfall_tool/run_tool.py "GEFS"
 
 ## runs plots for ECWMF
-singularity exec --bind /data:/data,/home:/home,/work:/work,/common:/common -e ar_landfall_tool.sif /opt/conda/bin/python /home/cw3eit/ARPortal/gefs/scripts/ar_landfall_tool/run_tool.py "ECMWF"
+singularity exec --bind /data:/data,/home:/home,/work:/work,/common:/common -e /data/projects/containers/ar_landfall_tool/ar_landfall_tool.sif /opt/conda/bin/python /home/cw3eit/ARPortal/gefs/scripts/ar_landfall_tool/run_tool.py "ECMWF"
 
 ## runs plots for W-WRF
-singularity exec --bind /data:/data,/home:/home,/work:/work,/common:/common -e ar_landfall_tool.sif /opt/conda/bin/python /home/cw3eit/ARPortal/gefs/scripts/ar_landfall_tool/run_tool.py "W-WRF"
+singularity exec --bind /data:/data,/home:/home,/work:/work,/common:/common -e /data/projects/containers/ar_landfall_tool/ar_landfall_tool.sif /opt/conda/bin/python /home/cw3eit/ARPortal/gefs/scripts/ar_landfall_tool/run_tool.py "W-WRF"
 
 ## runs plots for ECMWF-GEFS
-singularity exec --bind /data:/data,/home:/home,/work:/work,/common:/common -e ar_landfall_tool.sif /opt/conda/bin/python /home/cw3eit/ARPortal/gefs/scripts/ar_landfall_tool/run_tool.py "ECMWF-GEFS"
+singularity exec --bind /data:/data,/home:/home,/work:/work,/common:/common -e /data/projects/containers/ar_landfall_tool/ar_landfall_tool.sif /opt/conda/bin/python /home/cw3eit/ARPortal/gefs/scripts/ar_landfall_tool/run_tool.py "ECMWF-GEFS"
 ```
