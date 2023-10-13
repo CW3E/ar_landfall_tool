@@ -105,7 +105,7 @@ class load_datasets:
             self.fpath = path_to_data + 'GEFS/FullFiles/'
             self.ensemble_name = 'GEFS'
         elif self.forecast == 'ECMWF' or self.forecast == 'ECMWF-GEFS':
-            self.fpath = path_to_data + 'ECMWF/archive/' # will need to adjust when operational
+            self.fpath = path_to_data + 'ECMWF/' 
             self.ensemble_name = 'ECMWF'
         elif forecast == 'W-WRF':
             self.fpath = '/data/downloaded/WWRF-NRT/2023-2024/Ensemble_IVT/' 
