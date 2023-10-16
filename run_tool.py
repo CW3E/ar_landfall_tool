@@ -41,6 +41,9 @@ for i, (loc, ori, ptloc) in enumerate(zip(loc_lst, ori_lst, ptloc_lst)):
         ds_pt = ds_pt_ECMWF-ds_pt_GEFS
         ds = ds_ECMWF-ds_GEFS
         
+        ##Add attribute information
+        ds_pt = ds_pt.assign_attrs(model_init_date=model_init_date)
+        
     else:
         s = load_datasets(model, loc, ptloc)
         ds_pt, ds = s.calc_ivt_vars()
