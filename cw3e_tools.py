@@ -211,7 +211,8 @@ class load_datasets:
         probability_lst = []
         duration_lst = []
         for i, thres in enumerate(thresholds):
-            data_size = ds.IVT.ensemble.shape
+            # data_size = ds.IVT.ensemble.shape
+            data_size = np.ma.count(~np.isnan(ds.IVT.ensemble))
             tmp = ds.where(ds.IVT >= thres) # find where IVT exceeds threshold
 
             # sum the number of ensembles where IVT exceeds threshold

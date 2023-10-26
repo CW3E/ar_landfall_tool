@@ -64,6 +64,7 @@ class landfall_tool_IVT_magnitude:
     
     def __init__(self, ds_pt, loc, ptloc, forecast='GEFS', mag_type='control', orientation='latitude'):
         self.path_to_out = '/home/cw3eit/ARPortal/gefs/scripts/ar_landfall_tool/figs/'
+        # self.path_to_out = 'figs/'
         self.date_string = ds_pt.model_init_date.strftime('%Y%m%d%H')
         self.model_init_date = datetime.datetime.strptime(self.date_string, '%Y%m%d%H')
         self.loc = loc
@@ -82,10 +83,11 @@ class landfall_tool_IVT_magnitude:
         ## format dicts for plots
         self.fontsize = 12
         self.kw_ticklabels = {'size': self.fontsize-2, 'color': 'dimgray', 'weight': 'light'}
-        self.kw_grid = {'linewidth': .5, 'color': 'k', 'linestyle': '--', 'alpha': 0.1}
+        self.kw_grid = {'linewidth': .5, 'color': 'k', 'linestyle': '--', 'alpha': 0.4}
         self.kw_ticks = {'length': 4, 'width': 0.5, 'pad': 2, 'color': 'black',
                          'labelsize': self.fontsize-2, 'labelcolor': 'dimgray'}
         self.IVT_units = 'kg m$^{-1}$ s$^{-1}$'
+        self.fig_title = 'CW3E AR Landfall Tool | {0}'.format(self.forecast)
         
         if self.loc == 'US-west_old':
             self.grant_info = 'FIRO/CA-AR Program'
@@ -93,6 +95,8 @@ class landfall_tool_IVT_magnitude:
             self.grant_info = 'FIRO/CA-AR Program and NSF #2052972'
         else:
             self.grant_info = 'NSF #2052972'
+        self.disclaimer = 'Forecasts support {0} | Intended for research purposes only'.format(self.grant_info)
+        self.cbar_lbl = '{0} IVT ({1})'.format(self.name, self.IVT_units)
             
     def get_date_information(self):
 
@@ -126,7 +130,7 @@ class landfall_tool_IVT_magnitude:
         '''
         if self.orientation == 'latitude':
             # this extends the domain of the plot 2 degrees in the longitude direction
-            londx=2. 
+            londx=3. 
             lonmin = self.lons.min()-londx
             lonmax = self.lons.max()+londx
             # this extends the domain 0.25 degrees in the latitude direction
@@ -191,21 +195,21 @@ class landfall_tool_IVT_magnitude:
         # apply xtick parameters
         positions = np.arange(0, 17, 1)
         ax.xaxis.set_major_locator(mticker.FixedLocator(positions))
-        ax.xaxis.set_major_formatter(mticker.FixedFormatter(self.xtck_lbl))
+        ax.xaxis.set_major_formatter(mticker.FixedFormatter(positions))
         for tick in ax.get_xticklabels():
             tick.set_fontweight('light')
             
         # labels are days since forecast initialization
-        for i, x in enumerate(positions):
-            ax.annotate(u"{:0.0f}".format(x), # this is the text
+        for i, (x,xlbl) in enumerate(zip(positions[1:-1], self.xtck_lbl[1:-1])):
+            ax.annotate(xlbl, # this is the text
                        (x,y.min()), # these are the coordinates to position the label
                         textcoords="offset points", # how to position the text
                         xytext=(0,0), # distance from text to points (x,y)
                         ha='center', # horizontal alignment can be left, right or center
-                        bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="k", lw=0.5, alpha=0.8),
+                        # bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="k", lw=0.5, alpha=0.8),
                         xycoords='data',
                         zorder=200,
-                        fontsize=self.fontsize)
+                        fontsize=self.fontsize-4)
             
         ax.set_xlim(16.125, 0)
 
@@ -220,7 +224,7 @@ class landfall_tool_IVT_magnitude:
         ## labels and subtitles
         ax.set_ylabel("Latitude along West Coast", fontsize=self.fontsize)
         ax.set_xlabel(self.xlbl, fontsize=self.fontsize)
-        ax.set_title('16-d {0} {1} IVT ({2})'.format(self.forecast, self.name, self.IVT_units), loc='left', fontsize=self.fontsize)
+        ax.set_title(self.fig_title, loc='left', fontsize=self.fontsize)
         
         return ax
     
@@ -250,21 +254,21 @@ class landfall_tool_IVT_magnitude:
         # apply ytick parameters
         positions = np.arange(0, 17, 1)
         ax.yaxis.set_major_locator(mticker.FixedLocator(positions))
-        ax.yaxis.set_major_formatter(mticker.FixedFormatter(self.xtck_lbl))
+        ax.yaxis.set_major_formatter(mticker.FixedFormatter(positions))
         for tick in ax.get_yticklabels():
             tick.set_fontweight('light')
         
         # labels are days since forecast initialization
-        for i, y in enumerate(positions):
-            ax.annotate(u"{:0.0f}".format(y), # this is the text
+        for i, (y,xlbl) in enumerate(zip(positions[1:-1], self.xtck_lbl[1:-1])):
+            ax.annotate(xlbl, # this is the text
                        (x.min(),y), # these are the coordinates to position the label
                         textcoords="offset points", # how to position the text
-                        xytext=(-3,-3), # distance from text to points (x,y)
+                        xytext=(0,-3), # distance from text to points (x,y)
                         ha='left', # horizontal alignment can be left, right or center
-                        bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="k", lw=0.5, alpha=0.8),
+                        bbox=dict(boxstyle="round,pad=0.1", fc="white", ec="white", lw=0.5, alpha=0.8),
                         xycoords='data',
                         zorder=200,
-                        fontsize=self.fontsize)
+                        fontsize=self.fontsize-2)
         ax.set_ylim(0, 16.125)
         
         # apply gridlines
@@ -302,7 +306,7 @@ class landfall_tool_IVT_magnitude:
         gl.top_labels = False
         gl.right_labels = False
         if self.orientation == 'latitude':
-            gl.left_labels = False
+            gl.left_labels = True
             gl.bottom_labels = True
             mk_size = 3
         else:
@@ -330,8 +334,7 @@ class landfall_tool_IVT_magnitude:
             ax.plot(x, y, 'ko', markersize=mk_size, transform=datacrs)
             
         if self.orientation == 'longitude':
-            txt = '16-d {0} {1} IVT ({2})'.format(self.forecast, self.name, self.IVT_units) 
-            ax.set_title(txt, loc='left', fontsize=self.fontsize)
+            ax.set_title(self.fig_title, loc='left', fontsize=self.fontsize)
         
         ax.set_title(self.title, loc='right', fontsize=self.fontsize)
         ax.set_extent(self.ext, crs=datacrs)
@@ -351,11 +354,11 @@ class landfall_tool_IVT_magnitude:
         if self.orientation == 'latitude':
             fig = plt.figure(figsize=(13., 6))
             fig.dpi = 300
-            nrows = 4
+            nrows = 5
             ncols = 2
             ## Use gridspec to set up a plot with a series of subplots that is
             ## n-rows by n-columns
-            gs = GridSpec(nrows, ncols, height_ratios=[1, 0.05, 0.05, 0.05], width_ratios = [2.25, 0.75], wspace=0.05, hspace=0.2)
+            gs = GridSpec(nrows, ncols, height_ratios=[1, 0.05, 0.05, 0.05, 0.05], width_ratios = [2.25, 0.75], wspace=0.1, hspace=0.2)
             ## use gs[rows index, columns index] to access grids         
 
             ## Add probability plot         
@@ -366,6 +369,7 @@ class landfall_tool_IVT_magnitude:
             cbax = plt.subplot(gs[2,0]) # colorbar axis
             cb = Colorbar(ax = cbax, mappable = self.cf, orientation = 'horizontal', ticklocation = 'bottom', ticks=self.cflevs[1:-2:2])
             cb.ax.set_xticklabels(["{0}".format(i) for i in cb.get_ticks()], **self.kw_ticklabels)  # horizontally oriented colorbar
+            cb.set_label(self.cbar_lbl, fontsize=self.fontsize)
 
             # Set up projection information for map
             mapcrs = ccrs.PlateCarree()
@@ -375,15 +379,14 @@ class landfall_tool_IVT_magnitude:
             self.plot_map(ax, mapcrs, datacrs)
             
             ## labels and subtitles
-            ax = fig.add_subplot(gs[3, 0])
+            ax = fig.add_subplot(gs[4, :])
             ax.axis('off')
-            title = 'Forecasts support {0} | Intended for research purposes only'.format(self.grant_info)
-            ax.annotate(title, # this is the text
+            ax.annotate(self.disclaimer, # this is the text
                        (0, 0.1), # these are the coordinates to position the label
                         textcoords="offset points", # how to position the text
                         xytext=(0,0), # distance from text to points (x,y)
                         ha='left', # horizontal alignment can be left, right or center
-                        fontsize=self.fontsize-2)
+                        **self.kw_ticklabels)
 
             ## Add CW3E logo
             ax = fig.add_subplot(gs[1:, 1])
@@ -393,11 +396,11 @@ class landfall_tool_IVT_magnitude:
         elif self.orientation == 'longitude':
             fig = plt.figure(figsize=(9, 12))
             fig.dpi = 300
-            nrows = 5
+            nrows = 6
             ncols = 2
             ## Use gridspec to set up a plot with a series of subplots that is
             ## n-rows by n-columns
-            gs = GridSpec(nrows, ncols, height_ratios=[0.7, 1, 0.02, 0.05, 0.05], width_ratios = [0.75, 0.25], hspace=0.06, wspace=0.02)
+            gs = GridSpec(nrows, ncols, height_ratios=[0.7, 1, 0.02, 0.05, 0.05, 0.05], width_ratios = [0.75, 0.25], hspace=0.06, wspace=0.02)
             ## use gs[rows index, columns index] to access grids
             ## Add probability plot         
             ax = fig.add_subplot(gs[1, :])
@@ -407,6 +410,7 @@ class landfall_tool_IVT_magnitude:
             cbax = plt.subplot(gs[3,0]) # colorbar axis
             cb = Colorbar(ax = cbax, mappable = self.cf, orientation = 'horizontal', ticklocation = 'bottom', ticks=self.cflevs[1:-2:2])
             cb.ax.set_xticklabels(["{0}".format(i) for i in cb.get_ticks()], **self.kw_ticklabels)  # horizontally oriented colorbar
+            cb.set_label(self.cbar_lbl, fontsize=self.fontsize)
        
             # Set up projection information for map
             mapcrs = ccrs.PlateCarree()
@@ -417,15 +421,14 @@ class landfall_tool_IVT_magnitude:
 
                  
             ## labels and subtitles
-            ax = fig.add_subplot(gs[4, 0])
+            ax = fig.add_subplot(gs[5, 0])
             ax.axis('off')
-            title = 'Forecasts support {0} | Intended for research purposes only'.format(self.grant_info)
-            ax.annotate(title, # this is the text
+            ax.annotate(self.disclaimer, # this is the text
                        (0, 0.), # these are the coordinates to position the label
                         textcoords="offset points", # how to position the text
                         xytext=(0,0), # distance from text to points (x,y)
                         ha='left', # horizontal alignment can be left, right or center
-                        fontsize=self.fontsize-2)
+                        **self.kw_ticklabels)
 
             ## Add CW3E logo
             ax = fig.add_subplot(gs[3:, 1])
@@ -435,4 +438,5 @@ class landfall_tool_IVT_magnitude:
         fig.savefig('%s.%s' %(fname1, fmt), bbox_inches='tight', dpi=fig.dpi) # save generic "current"
         fig.savefig('%s.%s' %(fname2, fmt), bbox_inches='tight', dpi=fig.dpi) # save with date/time
         # close figure
+        # plt.show()
         plt.close(plt.gcf())

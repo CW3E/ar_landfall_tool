@@ -10,6 +10,10 @@ from ar_landfall_tool_contour import landfall_tool_contour
 from ar_landfall_tool_vector import landfall_tool_vector
 from ar_landfall_tool_IVT_mag import landfall_tool_IVT_magnitude
 from datetime import datetime
+from matplotlib import rc
+rc('font',**{'family':'sans-serif','sans-serif':['PT Sans']})
+rc('text', usetex=True)
+
 
 startTime = datetime.now() # get start time of script
 loc_lst = ['US-west']*3 + ['SAK']*3 + ['AK']*2
