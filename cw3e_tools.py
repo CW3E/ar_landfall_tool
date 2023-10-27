@@ -152,19 +152,20 @@ class load_datasets:
     def load_prec_QPF_dataset(self):
         
         if self.forecast == 'GEFS':
-            ## this method directly opens data from NOMADS
-            date = self.model_init_date.strftime('%Y%m%d') # model init date
-            hr = self.model_init_date.strftime('%H') # model init hour
-            url = 'https://nomads.ncep.noaa.gov/dods/gfs_0p25/gfs{0}/gfs_0p25_{1}z'.format(date, hr)
-            ds = xr.open_dataset(url, decode_times=False)
-            ds = ds.isel(time=7*8) # get 7-day QPF - the variable is already cumulative
-            prec = ds['apcpsfc']/25.4 # convert from mm to inches
-
-        #     ## This method uses the downloaded data
-        #     self.download_QPF_dataset()
-        #     ds = xr.open_dataset('precip_GFS.grb', engine='cfgrib', backend_kwargs={"indexpath": ""})
-        #     ds = ds.rename({'longitude': 'lon', 'latitude': 'lat'})
-        #     prec = ds['tp']/25.4 # convert from mm to inches
+            try: 
+                ## this method directly opens data from NOMADS
+                date = self.model_init_date.strftime('%Y%m%d') # model init date
+                hr = self.model_init_date.strftime('%H') # model init hour
+                url = 'https://nomads.ncep.noaa.gov/dods/gfs_0p25/gfs{0}/gfs_0p25_{1}z'.format(date, hr)
+                ds = xr.open_dataset(url, decode_times=False)
+                ds = ds.isel(time=7*8) # get 7-day QPF - the variable is already cumulative
+                prec = ds['apcpsfc']/25.4 # convert from mm to inches
+            except OSError:
+                ## This method uses the downloaded data
+                self.download_QPF_dataset()
+                ds = xr.open_dataset('precip_GFS.grb', engine='cfgrib', backend_kwargs={"indexpath": ""})
+                ds = ds.rename({'longitude': 'lon', 'latitude': 'lat'})
+                prec = ds['tp']/25.4 # convert from mm to inches
         
         else:
             self.download_QPF_dataset()
