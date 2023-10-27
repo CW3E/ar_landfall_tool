@@ -150,7 +150,7 @@ class landfall_tool_contour:
             lonmin = self.lons.min()-londx
             lonmax = self.lons.max()+londx
             # this extends the domain of the plot 2 degrees in the latitude direction
-            latdy = 3.
+            latdy = 2.
             latmin = self.lats.min()-latdy
             latmax = self.lats.max()+latdy
 
