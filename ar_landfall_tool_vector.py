@@ -1,3 +1,11 @@
+#!/usr/bin/python3
+"""
+Filename:    ar_landfall_tool_vector.py
+Author:      Deanna Nash, dnash@ucsd.edu
+Description: Functions for CW3E AR Landfall Tool (vector)
+"""
+
+# Standard Python modules
 import os, sys
 import glob
 import shutil

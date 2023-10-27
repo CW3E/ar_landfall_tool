@@ -1,3 +1,11 @@
+#!/usr/bin/python3
+"""
+Filename:    ar_landfall_tool_contour.py
+Author:      Deanna Nash, dnash@ucsd.edu
+Description: Functions for CW3E AR Landfall Tool (contour)
+"""
+
+# Standard Python modules
 import os, sys
 import glob
 import shutil
