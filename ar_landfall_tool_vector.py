@@ -291,7 +291,7 @@ class landfall_tool_vector:
                         textcoords="offset points", # how to position the text
                         xytext=(0,-3), # distance from text to points (x,y)
                         ha='center', # horizontal alignment can be left, right or center
-                        bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="k", lw=0.5, alpha=0.8),
+                        bbox=dict(boxstyle="round,pad=0.1", fc="white", ec="white", lw=0.5, alpha=0.8),
                         xycoords='data',
                         zorder=200,
                         fontsize=self.fontsize-2)
@@ -609,7 +609,7 @@ class landfall_tool_vector:
                         textcoords="offset points", # how to position the text
                         xytext=(0,0), # distance from text to points (x,y)
                         ha='left', # horizontal alignment can be left, right or center
-                        fontsize=self.fontsize-2)
+                        **self.kw_ticklabels)
             
             
             ## Add CW3E logo

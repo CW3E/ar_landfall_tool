@@ -66,7 +66,7 @@ class landfall_tool_contour:
     
     def __init__(self, ds_pt, loc, ptloc, forecast='GEFS', threshold=250, orientation='latitude'):
         self.path_to_out = '/home/cw3eit/ARPortal/gefs/scripts/ar_landfall_tool/figs/'
-        # self.path_to_out = 'figs/'
+        self.path_to_out = 'figs/'
         ## pull info from ds_pt
         self.date_string = ds_pt.model_init_date.strftime('%Y%m%d%H')
         self.model_init_date = datetime.datetime.strptime(self.date_string, '%Y%m%d%H')
@@ -264,16 +264,16 @@ class landfall_tool_contour:
             tick.set_fontweight('light')
         
         # labels are days since forecast initialization
-        for i, (y, xlbl) in enumerate(zip(positions, self.xtck_lbl)):
+        for i, (y,xlbl) in enumerate(zip(positions[1:-1], self.xtck_lbl[1:-1])):
             ax.annotate(xlbl, # this is the text
                        (x.min(),y), # these are the coordinates to position the label
                         textcoords="offset points", # how to position the text
-                        xytext=(-3,-3), # distance from text to points (x,y)
+                        xytext=(0,-3), # distance from text to points (x,y)
                         ha='left', # horizontal alignment can be left, right or center
-                        # bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="k", lw=0.5, alpha=0.8),
+                        bbox=dict(boxstyle="round,pad=0.1", fc="white", ec="white", lw=0.5, alpha=0.8),
                         xycoords='data',
                         zorder=200,
-                        fontsize=self.fontsize)
+                        fontsize=self.fontsize-2)
         ax.set_ylim(0, 16.125)
         
         # apply gridlines
@@ -371,8 +371,11 @@ class landfall_tool_contour:
 
             ## Add color bar
             cbax = plt.subplot(gs[2,0]) # colorbar axis
-            # hack for getting weird tick labels that Jay wants
-            cbarticks = list(itertools.compress(self.cflevs, [0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0]))
+            if self.forecast == 'ECMWF-GEFS':
+                cbarticks = self.cflevs[1:-1:2]
+            else:
+                # hack for getting weird tick labels that Jay wants
+                cbarticks = list(itertools.compress(self.cflevs, [0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0]))
             cb = Colorbar(ax = cbax, mappable = self.cf, orientation = 'horizontal', ticklocation = 'bottom', ticks=cbarticks)
             cb.ax.set_xticklabels(["{:.0%}".format(i) for i in cb.get_ticks()], **self.kw_ticklabels)  # horizontally oriented colorbar
             cb.set_label(self.cbar_lbl, fontsize=self.fontsize)
@@ -403,11 +406,11 @@ class landfall_tool_contour:
         elif self.orientation == 'longitude':
             fig = plt.figure(figsize=(9, 12))
             fig.dpi = 300
-            nrows = 5
+            nrows = 6
             ncols = 2
             ## Use gridspec to set up a plot with a series of subplots that is
             ## n-rows by n-columns
-            gs = GridSpec(nrows, ncols, height_ratios=[0.7, 1, 0.02, 0.05, 0.05], width_ratios = [0.75, 0.25], hspace=0.06, wspace=0.02)
+            gs = GridSpec(nrows, ncols, height_ratios=[0.7, 1, 0.02, 0.05, 0.05, 0.05], width_ratios = [0.75, 0.25], hspace=0.06, wspace=0.02)
             ## use gs[rows index, columns index] to access grids
             ## Add probability plot         
             ax = fig.add_subplot(gs[1, :])
@@ -415,8 +418,11 @@ class landfall_tool_contour:
 
             ## Add color bar
             cbax = plt.subplot(gs[3,0]) # colorbar axis
-            # hack for getting weird tick labels that Jay wants
-            cbarticks = list(itertools.compress(self.cflevs, [0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0]))
+            if self.forecast == 'ECMWF-GEFS':
+                cbarticks = self.cflevs[1:-1:2]
+            else:
+                # hack for getting weird tick labels that Jay wants
+                cbarticks = list(itertools.compress(self.cflevs, [0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0]))
             cb = Colorbar(ax = cbax, mappable = self.cf, orientation = 'horizontal', ticklocation = 'bottom', ticks=cbarticks)
             cb.ax.set_xticklabels(["{:.0%}".format(i) for i in cb.get_ticks()], **self.kw_ticklabels)  # horizontally oriented colorbar
             cb.set_label(self.cbar_lbl, fontsize=self.fontsize)
@@ -429,14 +435,14 @@ class landfall_tool_contour:
 
                  
             ## labels and subtitles
-            ax = fig.add_subplot(gs[4, 0])
+            ax = fig.add_subplot(gs[5, 0])
             ax.axis('off')
             ax.annotate(self.disclaimer, # this is the text
                        (0, 0.), # these are the coordinates to position the label
                         textcoords="offset points", # how to position the text
                         xytext=(0,0), # distance from text to points (x,y)
                         ha='left', # horizontal alignment can be left, right or center
-                        fontsize=self.fontsize-2)
+                        **self.kw_ticklabels)
 
             ## Add CW3E logo
             ax = fig.add_subplot(gs[3:, 1])
