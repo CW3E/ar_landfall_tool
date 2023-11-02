@@ -16,10 +16,18 @@ from datetime import datetime
 
 
 startTime = datetime.now() # get start time of script
-loc_lst = ['US-west']*3 + ['SAK']*3 + ['AK']*2
-ori_lst = ['latitude']*3 + ['longitude']*3 + ['latitude']*2
 model = sys.argv[1]
-ptloc_lst = ['coast', 'foothills', 'inland']*2 + ['coast', 'inland']
+
+if (model == 'ECMWF') | (model == 'GEFS'):
+    loc_lst = ['US-west']*3 + ['SAK']*3 + ['AK']*2
+    ori_lst = ['latitude']*3 + ['longitude']*3 + ['latitude']*2
+    ptloc_lst = ['coast', 'foothills', 'inland']*2 + ['coast', 'inland']
+
+elif (model == 'ECMWF-GEFS') | (model == 'W-WRF'):
+    loc_lst = ['US-west']*3 
+    ori_lst = ['latitude']*3 
+    ptloc_lst = ['coast', 'foothills', 'inland']
+
 threshold_lst = [150, 250, 500, 750]
 
 # for each model and point location, load the data, then calculate each metric

@@ -232,7 +232,7 @@ class landfall_tool_vector:
                         # bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="k", lw=0.5, alpha=0.8),
                         xycoords='data',
                         zorder=200,
-                        fontsize=self.fontsize-2)
+                        fontsize=self.fontsize-4)
 
         # apply gridlines
         ax.minorticks_on()
@@ -285,8 +285,8 @@ class landfall_tool_vector:
             tick.set_fontweight('light')
         
         # labels are days since forecast initialization
-        for i, (y, xlbl) in enumerate(zip(positions[1:], self.xtck_lbl[1:])):
-            ax.annotate(u"{:0.0f}".format(y), # this is the text
+        for i, (y,xlbl) in enumerate(zip(positions[1:-1], self.xtck_lbl[1:-1])):
+            ax.annotate(xlbl, # this is the text
                        (x.min(),y), # these are the coordinates to position the label
                         textcoords="offset points", # how to position the text
                         xytext=(0,-3), # distance from text to points (x,y)
@@ -552,7 +552,7 @@ class landfall_tool_vector:
                         textcoords="offset points", # how to position the text
                         xytext=(0,0), # distance from text to points (x,y)
                         ha='left', # horizontal alignment can be left, right or center
-                        fontsize=self.fontsize-2)
+                        **self.kw_ticklabels))
         
         elif self.orientation == 'longitude':
             fig = plt.figure(figsize=(10, 15))
