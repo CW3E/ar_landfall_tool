@@ -367,7 +367,11 @@ class landfall_tool_IVT_magnitude:
 
             ## Add color bar
             cbax = plt.subplot(gs[2,0]) # colorbar axis
-            cb = Colorbar(ax = cbax, mappable = self.cf, orientation = 'horizontal', ticklocation = 'bottom', ticks=self.cflevs[1:-2:2])
+            if self.forecast == 'ECMWF-GEFS':
+                cbarticks = self.cflevs[1::2]
+            else:
+                cbarticks = self.cflevs[1:-1:2]
+            cb = Colorbar(ax = cbax, mappable = self.cf, orientation = 'horizontal', ticklocation = 'bottom', ticks=cbarticks)
             cb.ax.set_xticklabels(["{0}".format(i) for i in cb.get_ticks()], **self.kw_ticklabels)  # horizontally oriented colorbar
             cb.set_label(self.cbar_lbl, fontsize=self.fontsize)
 
@@ -408,7 +412,11 @@ class landfall_tool_IVT_magnitude:
 
             ## Add color bar
             cbax = plt.subplot(gs[3,0]) # colorbar axis
-            cb = Colorbar(ax = cbax, mappable = self.cf, orientation = 'horizontal', ticklocation = 'bottom', ticks=self.cflevs[1:-2:2])
+            if self.forecast == 'ECMWF-GEFS':
+                cbarticks = self.cflevs[1::2]
+            else:
+                cbarticks = self.cflevs[1:-1:2]
+            cb = Colorbar(ax = cbax, mappable = self.cf, orientation = 'horizontal', ticklocation = 'bottom', ticks=cbarticks)
             cb.ax.set_xticklabels(["{0}".format(i) for i in cb.get_ticks()], **self.kw_ticklabels)  # horizontally oriented colorbar
             cb.set_label(self.cbar_lbl, fontsize=self.fontsize)
        
