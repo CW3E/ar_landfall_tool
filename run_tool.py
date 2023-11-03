@@ -21,12 +21,12 @@ model = sys.argv[1]
 if (model == 'ECMWF') | (model == 'GEFS'):
     loc_lst = ['US-west']*3 + ['SAK']*3 + ['AK']*2
     ori_lst = ['latitude']*3 + ['longitude']*3 + ['latitude']*2
-    ptloc_lst = ['coast', 'foothills', 'inland']*2 + ['coast', 'inland']
+    ptloc_lst = ['coast', 'foothills', 'inland', 'intwest'] + ['coast', 'foothills', 'inland'] + ['coast', 'inland']
 
 elif (model == 'ECMWF-GEFS') | (model == 'W-WRF'):
     loc_lst = ['US-west']*3 
     ori_lst = ['latitude']*3 
-    ptloc_lst = ['coast', 'foothills', 'inland']
+    ptloc_lst = ['coast', 'foothills', 'inland', 'intwest']
 
 threshold_lst = [150, 250, 500, 750]
 
