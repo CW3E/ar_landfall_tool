@@ -243,7 +243,7 @@ class landfall_tool_vector:
         ax.tick_params(axis='y', which='major', direction='out', **self.kw_ticks)
 
         ## labels and subtitles
-        ax.set_ylabel("Latitude along West Coast", fontsize=self.fontsize)
+        ax.set_ylabel("Latitude", fontsize=self.fontsize)
         ax.set_xlabel(self.xlbl, fontsize=self.fontsize)
         ax.set_title(self.title, loc='right', fontsize=self.fontsize)
         ax.set_title('(a) 7-d {0} Ens. Mean IVT'.format(self.forecast), loc='left', fontsize=self.fontsize)

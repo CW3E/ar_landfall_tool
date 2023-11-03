@@ -66,7 +66,7 @@ class landfall_tool_contour:
     
     def __init__(self, ds_pt, loc, ptloc, forecast='GEFS', threshold=250, orientation='latitude'):
         self.path_to_out = '/home/cw3eit/ARPortal/gefs/scripts/ar_landfall_tool/figs/'
-        # self.path_to_out = 'figs/'
+        self.path_to_out = 'figs/'
         ## pull info from ds_pt
         self.date_string = ds_pt.model_init_date.strftime('%Y%m%d%H')
         self.model_init_date = datetime.datetime.strptime(self.date_string, '%Y%m%d%H')
@@ -226,7 +226,7 @@ class landfall_tool_contour:
         ax.tick_params(axis='y', which='major', direction='out', **self.kw_ticks)
 
         ## labels and subtitles
-        ax.set_ylabel("Latitude along West Coast", fontsize=self.fontsize)
+        ax.set_ylabel("Latitude", fontsize=self.fontsize)
         ax.set_xlabel(self.xlbl, fontsize=self.fontsize)
         ax.set_title(self.fig_title, loc='left', fontsize=self.fontsize)
         

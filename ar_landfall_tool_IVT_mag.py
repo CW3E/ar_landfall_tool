@@ -222,7 +222,7 @@ class landfall_tool_IVT_magnitude:
         ax.tick_params(axis='y', which='major', direction='out', **self.kw_ticks)
 
         ## labels and subtitles
-        ax.set_ylabel("Latitude along West Coast", fontsize=self.fontsize)
+        ax.set_ylabel("Latitude", fontsize=self.fontsize)
         ax.set_xlabel(self.xlbl, fontsize=self.fontsize)
         ax.set_title(self.fig_title, loc='left', fontsize=self.fontsize)
         
