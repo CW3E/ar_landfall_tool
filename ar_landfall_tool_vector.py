@@ -552,7 +552,7 @@ class landfall_tool_vector:
                         textcoords="offset points", # how to position the text
                         xytext=(0,0), # distance from text to points (x,y)
                         ha='left', # horizontal alignment can be left, right or center
-                        **self.kw_ticklabels))
+                        **self.kw_ticklabels)
         
         elif self.orientation == 'longitude':
             fig = plt.figure(figsize=(10, 15))
