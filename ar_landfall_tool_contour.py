@@ -64,9 +64,8 @@ class landfall_tool_contour:
     
     '''
     
-    def __init__(self, ds_pt, loc, ptloc, forecast='GEFS', threshold=250, orientation='latitude'):
-        self.path_to_out = '/home/cw3eit/ARPortal/gefs/scripts/ar_landfall_tool/figs/'
-        self.path_to_out = 'figs/'
+    def __init__(self, ds_pt, loc, ptloc, forecast='GEFS', threshold=250, orientation='latitude', path_to_out='/home/cw3eit/ARPortal/gefs/scripts/ar_landfall_tool/figs/'):
+        self.path_to_out = path_to_out
         ## pull info from ds_pt
         self.date_string = ds_pt.model_init_date.strftime('%Y%m%d%H')
         self.model_init_date = datetime.datetime.strptime(self.date_string, '%Y%m%d%H')
