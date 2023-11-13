@@ -104,12 +104,15 @@ class load_datasets:
         if self.forecast == 'GEFS':
             self.fpath = path_to_data + 'GEFS/FullFiles/'
             self.ensemble_name = 'GEFS'
+            self.datasize_min = 15.
         elif self.forecast == 'ECMWF' or self.forecast == 'ECMWF-GEFS':
             self.fpath = path_to_data + 'ECMWF/' 
             self.ensemble_name = 'ECMWF'
+            self.datasize_min = 25.
         elif forecast == 'W-WRF':
             self.fpath = '/data/downloaded/WWRF-NRT/2023-2024/Ensemble_IVT/' 
             self.ensemble_name = 'West-WRF'
+            self.datasize_min = 50.
         else:
             print('Forecast product not available! Please choose either GEFS, ECMWF, ECMWF-GEFS, or W-WRF.')
         if fname is not None:
@@ -212,17 +215,18 @@ class load_datasets:
         probability_lst = []
         duration_lst = []
         for i, thres in enumerate(thresholds):
-            # data_size = ds.IVT.ensemble.shape
-            data_size = np.ma.count(~np.isnan(ds.IVT.ensemble))
-            tmp = ds.where(ds.IVT >= thres) # find where IVT exceeds threshold
+            data_size = ds.IVT.count(dim='ensemble')
+            ## set ensemble size to nan if # of ensembles is not > 50% for GEFS and ECMWF
+            data_size = data_size.where(data_size >= self.datasize_min)
+            tmp = ds.IVT.where(ds.IVT >= thres) # find where IVT exceeds threshold
 
             # sum the number of ensembles where IVT exceeds threshold
             probability = tmp.count(dim='ensemble') / data_size
-            probability_lst.append(probability.IVT)
+            probability_lst.append(probability)
 
             # sum the number of time steps where IVT exceeds threshold
             duration = tmp.count(dim='forecast_hour')*3 # three hour time intervals
-            duration_lst.append(duration.IVT)
+            duration_lst.append(duration)
 
         # merge duration and probability datasets
         duration_ds = xr.concat(duration_lst, pd.Index(thresholds, name="threshold"))
