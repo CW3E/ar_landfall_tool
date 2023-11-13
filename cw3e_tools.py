@@ -235,7 +235,8 @@ class load_datasets:
         ## Calculate Vectors
         uvec = ds.uIVT.mean('ensemble') # get the ensemble mean uIVT
         vvec = ds.vIVT.mean('ensemble') # get the ensemble mean vIVT
-        ensemble_mean = ds.IVT.mean(dim='ensemble') # get the ensemble mean IVT
+        # get the ensemble mean IVT where there are enough ensembles
+        ensemble_mean = ds.IVT.where(data_size >= self.datasize_min).mean(dim='ensemble')
 
         # normalize vectors
         u = uvec / ensemble_mean
