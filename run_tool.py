@@ -60,7 +60,7 @@ for i, (loc, ori, ptloc) in enumerate(zip(loc_lst, ori_lst, ptloc_lst)):
         s = load_datasets(model, loc, ptloc)
         ds_pt, ds = s.calc_ivt_vars()
     
-    if model == 'ECMWF' or model == 'GEFS':
+    if (i == 0 and model == 'ECMWF') or (i == 0 and model == 'GEFS'):
         prec = s.load_prec_QPF_dataset()
     
     ##########################################
