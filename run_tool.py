@@ -18,15 +18,15 @@ from datetime import datetime
 startTime = datetime.now() # get start time of script
 model = sys.argv[1]
 
-if (model == 'ECMWF') | (model == 'GEFS'):
+if (model == 'ECMWF') | (model == 'GEFS') | (model == 'ECMWF-GEFS'):
     loc_lst = ['US-west']*4 + ['SAK']*3 + ['AK']*2
     ori_lst = ['latitude']*4 + ['longitude']*3 + ['latitude']*2
-    ptloc_lst = ['coast', 'foothills', 'inland', 'intwest'] + ['coast', 'foothills', 'inland'] + ['coast', 'inland']
+    ptloc_lst = ['coast', 'foothills', 'inland', 'intwest']*2 + ['coast', 'inland']
 
-elif (model == 'ECMWF-GEFS') | (model == 'W-WRF'):
-    loc_lst = ['US-west']*4 
-    ori_lst = ['latitude']*4 
-    ptloc_lst = ['coast', 'foothills', 'inland', 'intwest']
+elif (model == 'W-WRF'):
+    loc_lst = ['US-west']*4 + ['SAK']*2
+    ori_lst = ['latitude']*4 + ['longitude']*2 
+    ptloc_lst = ['coast', 'foothills', 'inland', 'intwest'] + ['coast', 'foothills']
 
 threshold_lst = [150, 250, 500, 750]
 
