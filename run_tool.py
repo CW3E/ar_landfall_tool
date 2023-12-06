@@ -28,8 +28,6 @@ elif (model == 'W-WRF'):
     ori_lst = ['latitude']*4 + ['longitude']*2 
     ptloc_lst = ['coast', 'foothills', 'inland', 'intwest'] + ['coast', 'foothills']
 
-threshold_lst = [150, 250, 500, 750]
-
 # for each model and point location, load the data, then calculate each metric
 for i, (loc, ori, ptloc) in enumerate(zip(loc_lst, ori_lst, ptloc_lst)):
     print(model, loc, ori, ptloc)
@@ -74,6 +72,10 @@ for i, (loc, ori, ptloc) in enumerate(zip(loc_lst, ori_lst, ptloc_lst)):
     s = landfall_tool_IVT_magnitude(ds_pt=ds_pt, loc=loc, ptloc=ptloc, forecast=model, mag_type='ensemble_mean', orientation=ori)
     s.create_figure()
     
+    if ptloc == 'intwest':
+        threshold_lst = [100, 150, 250, 500, 750]
+    else:
+        threshold_lst = [150, 250, 500, 750]
     ## plot vector and contour landfall plots (this will loop through all the thresholds)
     for j, thres in enumerate(threshold_lst):
         s = landfall_tool_contour(ds_pt=ds_pt, loc=loc, ptloc=ptloc, forecast=model, threshold=thres, orientation=ori)

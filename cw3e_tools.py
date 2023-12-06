@@ -211,7 +211,7 @@ class load_datasets:
         ds = ds.sel(lon=x, lat=y, method='nearest')
 
         ## Calculate probability and duration IVT >= threshold
-        thresholds = [150, 250, 500, 750, 1000]
+        thresholds = [100, 150, 250, 500, 750, 1000]
         probability_lst = []
         duration_lst = []
         for i, thres in enumerate(thresholds):
