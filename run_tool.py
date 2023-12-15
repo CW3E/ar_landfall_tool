@@ -21,7 +21,7 @@ model = sys.argv[1]
 if (model == 'ECMWF') | (model == 'GEFS') | (model == 'ECMWF-GEFS'):
     loc_lst = ['US-west']*4 + ['SAK']*3 + ['AK']*2
     ori_lst = ['latitude']*4 + ['longitude']*3 + ['latitude']*2
-    ptloc_lst = ['coast', 'foothills', 'inland', 'intwest']*2 + ['coast', 'inland']
+    ptloc_lst = ['coast', 'foothills', 'inland', 'intwest'] + ['coast', 'foothills', 'inland'] + ['coast', 'inland']
 
 elif (model == 'W-WRF'):
     loc_lst = ['US-west']*4 + ['SAK']*2
