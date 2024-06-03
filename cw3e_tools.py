@@ -25,7 +25,7 @@ ivt_colors = {'250': (255./255.0, 174./255.0, 0./255.0), # orange
               }
 
 def plot_terrain(ax, ext):
-    fname = '/work/bkawzenuk_work/Maps/data/ETOPO1_Bed_c_gmt4.grd'
+    fname = '/home/cw3eit/ARPortal/gefs/ARScale/data/ETOPO1_Bed_c_gmt4.grd'
     datacrs = ccrs.PlateCarree()
     grid = xr.open_dataset(fname)
     grid = grid.where(grid.z > 0) # mask below sea level
