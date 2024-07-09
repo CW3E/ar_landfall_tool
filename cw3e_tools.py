@@ -164,11 +164,19 @@ class load_datasets:
                 ds = ds.isel(time=7*8) # get 7-day QPF - the variable is already cumulative
                 prec = ds['apcpsfc']/25.4 # convert from mm to inches
             except OSError:
-                ## This method uses the downloaded data
-                self.download_QPF_dataset()
-                ds = xr.open_dataset('precip_GFS.grb', engine='cfgrib', backend_kwargs={"indexpath": ""})
-                ds = ds.rename({'longitude': 'lon', 'latitude': 'lat'})
-                prec = ds['tp']/25.4 # convert from mm to inches
+                try:
+                    ## This method uses the downloaded data
+                    self.download_QPF_dataset()
+                    ds = xr.open_dataset('precip_GFS.grb', engine='cfgrib', backend_kwargs={"indexpath": ""})
+                    ds = ds.rename({'longitude': 'lon', 'latitude': 'lat'})
+                    prec = ds['tp']/25.4 # convert from mm to inches
+                except OSError:
+                    ## build a fake precip dataset of 0s
+                    lats = np.arange(-90., 90.25, .25)
+                    lons = np.arange(-180., 180.25, .25)
+                    var_dict = {'tp': (['lat', 'lon'], np.zeros((len(lats), len(lons))))}
+                    prec = xr.Dataset(var_dict, coords={'lat': (['lat'], lats),
+                                                        'lon': (['lon'], lons)})
         
         else:
             self.download_QPF_dataset()

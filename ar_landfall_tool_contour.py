@@ -30,6 +30,10 @@ from matplotlib.lines import Line2D
 from matplotlib import dates as mdates
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
+## code to plot faster
+import matplotlib as mpl
+mpl.use('agg')
+
 # cartopy
 import cartopy.crs as ccrs
 from cartopy.mpl.geoaxes import GeoAxes
