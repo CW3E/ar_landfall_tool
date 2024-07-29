@@ -17,6 +17,8 @@ import numpy as np
 import cartopy.crs as ccrs
 import cmocean.cm as cmo
 from PIL import Image
+from matplotlib import font_manager as fm
+import matplotlib.pyplot as plt
 
 ivt_colors = {'250': (255./255.0, 174./255.0, 0./255.0), # orange
               '500': (236./255.0, 0./255.0, 7./255.0), # red 
@@ -35,12 +37,34 @@ def plot_terrain(ax, ext):
     
     return ax
 
+def set_cw3e_font(current_dpi, scaling_factor):
+    fm.fontManager.addfont('utils/fonts/helvetica.ttc')
+
+    plt.rcParams.update({
+                    'font.family' : 'Helvetica',
+                    'figure.dpi': current_dpi,
+                    # 'font.size': 8 * scaling_factor, #changes axes tick label
+                    # 'axes.labelsize': 8 * scaling_factor,
+                    # 'axes.titlesize': 8 * scaling_factor,
+                    # 'xtick.labelsize': 8 * scaling_factor,#do nothing
+                    # 'ytick.labelsize': 8 * scaling_factor, #do nothing
+                    # 'legend.fontsize': 5 * scaling_factor,
+                    # 'lines.linewidth': 0.7 * scaling_factor,
+                    # 'axes.linewidth': 0.2 * scaling_factor,
+                    # 'legend.fontsize': 12 * scaling_factor,
+                    # 'xtick.major.width': 0.8 * scaling_factor,
+                    # 'ytick.major.width': 0.8 * scaling_factor,
+                    # 'xtick.minor.width': 0.6 * scaling_factor,
+                    # 'ytick.minor.width': 0.6 * scaling_factor,
+                    # 'lines.markersize': 6 * scaling_factor
+                })
+    
 def plot_cw3e_logo(ax, orientation):
     ## location of CW3E logo
     if orientation == 'horizontal':
         im = '/common/CW3E_Logo_Suite/1-Horzontal-PRIMARY_LOGO/Digital/JPG-RGB/CW3E-Logo-Horizontal-FullColor-RGB.jpg'
     else:
-        im = '/common/CW3E_Logo_Suite/2-Vertical/Digital/JPG-RGB/CW3E-Logo-Vertical-FullColor-RGB.jpg'
+        im = '/common/CW3E_Logo_Suite/5-Vertical-Acronym_Only/Digital/PNG/CW3E-Logo-Vertical-Acronym-FullColor.png'
     img = np.asarray(Image.open(im))
     ax.imshow(img)
     ax.axis('off')

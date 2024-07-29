@@ -42,7 +42,7 @@ import cmocean.cm as cmo
 
 # import personal modules
 import cw3ecmaps as cw3e
-from cw3e_tools import ivt_colors, plot_terrain, plot_cw3e_logo, get_every_other_vector, myround
+from cw3e_tools import ivt_colors, plot_terrain, plot_cw3e_logo, get_every_other_vector, myround, set_cw3e_font
 
 class landfall_tool_vector:
     '''
@@ -490,6 +490,12 @@ class landfall_tool_vector:
         fname2 = self.path_to_out+'{0}/{1}_LandfallTool_Vectors_{2}_{3}_{4}'.format(self.loc, self.forecast, self.threshold, self.ptloc, self.date_string)
         fmt = 'png'
         
+        ## set font
+        current_dpi=600 #recommended dpi of 600
+        base_dpi=100
+        scaling_factor = (current_dpi / base_dpi)**0.13
+        set_cw3e_font(current_dpi, scaling_factor)
+        
         # get tick and label information
         self.get_date_information()
         self.get_shared_axis_map_ticks()
@@ -500,7 +506,7 @@ class landfall_tool_vector:
         
         if self.orientation == 'latitude':
             fig = plt.figure(figsize=(12, 6))
-            fig.dpi = 300
+            fig.dpi = current_dpi
             nrows = 3
             ncols = 3
             ## Use gridspec to set up a plot with a series of subplots that is
@@ -560,7 +566,7 @@ class landfall_tool_vector:
         
         elif self.orientation == 'longitude':
             fig = plt.figure(figsize=(10, 15))
-            fig.dpi = 300
+            fig.dpi = current_dpi
             nrows = 6
             ncols = 3
             ## Use gridspec to set up a plot with a series of subplots that is
