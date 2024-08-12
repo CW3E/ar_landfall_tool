@@ -21,7 +21,7 @@ from matplotlib import font_manager as fm
 import matplotlib.pyplot as plt
 
 ivt_colors = {'250': (255./255.0, 174./255.0, 0./255.0), # orange
-              '500': (236./255.0, 0./255.0, 7./255.0), # red 
+              '500': (236./255.0, 0./255.0, 7./255.0), # red
               '750': (86./255.0, 0./255.0, 137./255.0), # purple
               '1000': (77./255.0, 77./255.0, 77./255.0) # grey
               }
@@ -34,11 +34,11 @@ def plot_terrain(ax, ext):
     grid = grid.sel(x=slice(ext[0], ext[1]), y=slice(ext[2], ext[3]))
     cs = ax.pcolormesh(grid.x, grid.y, grid.z,
                         cmap=cmo.gray_r, transform=datacrs, alpha=0.7)
-    
+
     return ax
 
 def set_cw3e_font(current_dpi, scaling_factor):
-    fm.fontManager.addfont('utils/fonts/helvetica.ttc')
+    fm.fontManager.addfont('/home/cw3eit/ARPortal/gefs/scripts/ar_landfall_tool/utils/fonts/helvetica.ttc')
 
     plt.rcParams.update({
                     'font.family' : 'Helvetica',
@@ -58,7 +58,7 @@ def set_cw3e_font(current_dpi, scaling_factor):
                     # 'ytick.minor.width': 0.6 * scaling_factor,
                     # 'lines.markersize': 6 * scaling_factor
                 })
-    
+
 def plot_cw3e_logo(ax, orientation):
     ## location of CW3E logo
     if orientation == 'horizontal':
@@ -101,7 +101,7 @@ class load_datasets:
     Copies or downloads the latest 7-d QPF for the current model initialization time
     Loads 7-d QPF
     Loads and calculates IVT vars for plotting
-    
+
     Parameters
     ----------
     forecast : str
@@ -114,12 +114,12 @@ class load_datasets:
         name of the transect of .txt file with latitude and longitude of locations for analysis
         this file should have no header, with latitude, then longitude, separated by a space
         this can be 'coast', 'foothills', or 'inland'
-  
+
     Returns
     -------
     grb : grb file
         grb file downloaded for current run of figures
-    
+
     '''
     def __init__(self, forecast, loc, ptloc, fname=None):
         path_to_data = '/data/downloaded/SCRATCH/cw3eit_scratch/'
@@ -130,22 +130,22 @@ class load_datasets:
             self.ensemble_name = 'GEFS'
             self.datasize_min = 15.
         elif self.forecast == 'ECMWF' or self.forecast == 'ECMWF-GEFS':
-            self.fpath = path_to_data + 'ECMWF/' 
+            self.fpath = path_to_data + 'ECMWF/'
             self.ensemble_name = 'ECMWF'
             self.datasize_min = 25.
         elif forecast == 'W-WRF':
-            self.fpath = '/data/downloaded/WWRF-NRT/2023-2024/Ensemble_IVT/' 
+            self.fpath = '/data/downloaded/WWRF-NRT/2023-2024/Ensemble_IVT/'
             self.ensemble_name = 'West-WRF'
             self.datasize_min = 50.
         else:
             print('Forecast product not available! Please choose either GEFS, ECMWF, ECMWF-GEFS, or W-WRF.')
         if fname is not None:
             self.fname = fname
-        if fname is None:          
+        if fname is None:
             ## find the most recent file in the currect directory
             list_of_files = glob.glob(self.fpath+'*.nc')
             self.fname = max(list_of_files, key=os.path.getctime)
-        
+
         # pull the initialization date from the filename
         regex = re.compile(r'\d+')
         date_string = regex.findall(self.fname)
@@ -157,7 +157,7 @@ class load_datasets:
         self.model_init_date = datetime.datetime.strptime(self.date_string, '%Y%m%d%H')
         self.ptloc = ptloc
         self.loc = loc
-        
+
     def download_QPF_dataset(self):
         date = self.model_init_date.strftime('%Y%m%d') # model init date
         hr = self.model_init_date.strftime('%H') # model init hour
@@ -169,17 +169,17 @@ class load_datasets:
         else:
             mmdyhr_init = self.model_init_date.strftime('%m%d%H') # month-day-hr init date
             date1 = datetime.datetime.strptime(self.date_string, '%Y%m%d%H')
-            date2 = date1 + datetime.timedelta(days=7) 
+            date2 = date1 + datetime.timedelta(days=7)
             date2 = date2.strftime('%m%d%H') # valid date
             fpath = '/data/downloaded/Forecasts/ECMWF/NRT_data/{0}{1}/'.format(date, hr)
             fname = 'S1D{0}00{1}001'.format(mmdyhr_init, date2)
             shutil.copy(fpath+fname, self.path_to_out+'precip_ECMWF') # copy file over to data folder
-            
-            
+
+
     def load_prec_QPF_dataset(self):
-        
+
         if self.forecast == 'GEFS':
-            try: 
+            try:
                 ## this method directly opens data from NOMADS
                 date = self.model_init_date.strftime('%Y%m%d') # model init date
                 hr = self.model_init_date.strftime('%H') # model init hour
@@ -201,14 +201,14 @@ class load_datasets:
                     var_dict = {'tp': (['lat', 'lon'], np.zeros((len(lats), len(lons))))}
                     prec = xr.Dataset(var_dict, coords={'lat': (['lat'], lats),
                                                         'lon': (['lon'], lons)})
-        
+
         else:
             self.download_QPF_dataset()
             var_lst = ['u10','lsm','msl','d2m','z','t2m','stl1', 'stl2', 'stl3', 'stl4', 'swvl4','swvl2', 'swvl3','sst','sp','v10','sd','skt', 'swvl1','siconc','tcwv','tcw']
             ds = xr.open_dataset(self.path_to_out+'precip_ECMWF', drop_variables=var_lst, engine='cfgrib', backend_kwargs={'filter_by_keys': {'typeOfLevel': 'surface'}})
             prec = ds['tp']*39.3701 # convert from m to inches
             prec = prec.rename({'longitude': 'lon', 'latitude': 'lat'}) # need to rename this to match GEFS
-        
+
         return prec
 
     def get_lat_lons_from_txt_file(self):
@@ -286,7 +286,7 @@ class load_datasets:
 
         x_lst = [x1, x2, x3, x4, x5, x6]
         final_ds = xr.merge(x_lst)
-        
+
         ##Add attribute information
         final_ds = final_ds.assign_attrs(model_init_date=self.model_init_date)
 
