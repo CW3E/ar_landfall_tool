@@ -19,6 +19,8 @@ import cmocean.cm as cmo
 from PIL import Image
 from matplotlib import font_manager as fm
 import matplotlib.pyplot as plt
+import concurrent.futures
+from concurrent.futures import ThreadPoolExecutor
 
 ivt_colors = {'250': (255./255.0, 174./255.0, 0./255.0), # orange
               '500': (236./255.0, 0./255.0, 7./255.0), # red
@@ -27,7 +29,7 @@ ivt_colors = {'250': (255./255.0, 174./255.0, 0./255.0), # orange
               }
 
 def plot_terrain(ax, ext):
-    fname = '/home/cw3eit/ARPortal/gefs/ARScale/data/ETOPO1_Bed_c_gmt4.grd'
+    fname = '/data/projects/operations/data/ETOPO1_Bed_c_gmt4.grd'
     datacrs = ccrs.PlateCarree()
     grid = xr.open_dataset(fname)
     grid = grid.where(grid.z > 0) # mask below sea level
@@ -38,7 +40,7 @@ def plot_terrain(ax, ext):
     return ax
 
 def set_cw3e_font(current_dpi, scaling_factor):
-    fm.fontManager.addfont('/home/cw3eit/ARPortal/gefs/scripts/ar_landfall_tool/utils/fonts/helvetica.ttc')
+    fm.fontManager.addfont('/data/projects/operations/LandfallTools/ar_landfall_tool/utils/fonts/helvetica.ttc')
 
     plt.rcParams.update({
                     'font.family' : 'Helvetica',
@@ -62,9 +64,9 @@ def set_cw3e_font(current_dpi, scaling_factor):
 def plot_cw3e_logo(ax, orientation):
     ## location of CW3E logo
     if orientation == 'horizontal':
-        im = '/common/CW3E_Logo_Suite/1-Horzontal-PRIMARY_LOGO/Digital/JPG-RGB/CW3E-Logo-Horizontal-FullColor-RGB.jpg'
+        im = '/data/projects/operations/data/CW3E_Logo_Suite/1-Horzontal-PRIMARY_LOGO/Digital/JPG-RGB/CW3E-Logo-Horizontal-FullColor-RGB.jpg'
     else:
-        im = '/common/CW3E_Logo_Suite/5-Vertical-Acronym_Only/Digital/PNG/CW3E-Logo-Vertical-Acronym-FullColor.png'
+        im = '/data/projects/operations/data/CW3E_Logo_Suite/5-Vertical-Acronym_Only/Digital/PNG/CW3E-Logo-Vertical-Acronym-FullColor.png'
     img = np.asarray(Image.open(im))
     ax.imshow(img)
     ax.axis('off')
@@ -122,19 +124,19 @@ class load_datasets:
 
     '''
     def __init__(self, forecast, loc, ptloc, fname=None):
-        path_to_data = '/data/downloaded/SCRATCH/cw3eit_scratch/'
-        self.path_to_out = '/home/cw3eit/ARPortal/gefs/scripts/ar_landfall_tool/data/'
+        path_to_data = '/data/projects/derived_products/'
+        self.path_to_out = '/data/projects/operations/LandfallTools/ar_landfall_tool/data/'
         self.forecast = forecast
         if self.forecast == 'GEFS':
-            self.fpath = path_to_data + 'GEFS/FullFiles/'
+            self.fpath = path_to_data + 'GEFS_IVT/data/'
             self.ensemble_name = 'GEFS'
             self.datasize_min = 15.
         elif self.forecast == 'ECMWF' or self.forecast == 'ECMWF-GEFS':
-            self.fpath = path_to_data + 'ECMWF/'
+            self.fpath = path_to_data + 'ECMWF_IVT/Ensemble/'
             self.ensemble_name = 'ECMWF'
             self.datasize_min = 25.
         elif forecast == 'W-WRF':
-            self.fpath = '/data/downloaded/WWRF-NRT/2023-2024/Ensemble_IVT/'
+            self.fpath = '/data/downloaded/WWRF-NRT/2024-2025/Ensemble_IVT/'
             self.ensemble_name = 'West-WRF'
             self.datasize_min = 50.
         else:
@@ -152,7 +154,7 @@ class load_datasets:
         if self.forecast == 'W-WRF':
             self.date_string = date_string[2]
         else:
-            self.date_string = date_string[1]
+            self.date_string = date_string[0]
 
         self.model_init_date = datetime.datetime.strptime(self.date_string, '%Y%m%d%H')
         self.ptloc = ptloc
@@ -221,22 +223,52 @@ class load_datasets:
         self.lats = df['latitude'].values
 
 
+
+
     def calc_ivt_vars(self):
-        ## load the forecast data
+
+        def background_ivt_calculation(ds):
+            ds1 = ds.sel(forecast_hour=slice(0, 24*7)).astype('float64').mean(['forecast_hour', 'ensemble'])
+            ds1 = ds1.astype('float32')
+            ds1 = ds1.where(ds1.IVT >= 250)
+            return ds1
+
+        # Load and preprocess dataset
         ds = xr.open_dataset(self.fname)
-        ds = ds.assign_coords({"lon": (((ds.lon + 180) % 360) - 180)}) # Convert DataArray longitude coordinates from 0-359 to -180-179
-        ds = ds.sel(lon=slice(-180., -1)) # keep only western hemisphere
+        ds = ds.astype('float16')
+        for coord in ds.coords:
+            if np.issubdtype(ds.coords[coord].dtype, np.floating):
+                ds.coords[coord] = ds.coords[coord].astype('float16')
+        ds = ds.assign_coords(lon=((ds.lon + 180) % 360 - 180)).sortby('lon')
+
         if self.forecast == 'ECMWF':
-            ds = ds.rename({'forecast_time': 'forecast_hour'}) # need to rename this to match GEFS
-            ds = ds.assign_coords({"forecast_hour": (ds.forecast_hour*3)}) # convert forecast time to forecast hour
+         ds = ds.rename({'forecast_time': 'forecast_hour'})
+         ds['forecast_hour'] = ds.forecast_hour * 3
+         if self.loc == 'US-west':
+          ds = ds.sel(lon=slice(-145., -105), lat=slice(25, 60))
+         elif self.loc == 'SAK':
+          ds = ds.sel(lon=slice(-166., -129), lat=slice(53, 63))
+         elif self.loc == 'AK':
+          ds = ds.sel(lon=slice(-170., -155), lat=slice(54, 71))
         elif self.forecast == 'W-WRF':
-            ds = ds.rename({'ensembles': 'ensemble'}) # need to rename this to match GEFS/ECMWF
+         ds = ds.rename({'ensembles': 'ensemble'})
+         if self.loc == 'US-west':
+          ds = ds.sel(lon=slice(-145., -105), lat=slice(25, 60))
+         elif self.loc == 'SAK':
+          ds = ds.sel(lon=slice(-166., -129), lat=slice(53, 63))
+         elif self.loc == 'AK':
+          ds = ds.sel(lon=slice(-170., -155), lat=slice(54, 71))
+        elif self.forecast == 'GEFS':
+         if self.loc == 'US-west':
+          ds = ds.sel(lon=slice(-145., -105), lat=slice(60, 25))
+         elif self.loc == 'SAK':
+          ds = ds.sel(lon=slice(-166., -129), lat=slice(63, 53))
+         elif self.loc == 'AK':
+          ds = ds.sel(lon=slice(-170., -155), lat=slice(71, 54))
 
-        ## Calculate IVT for the maps
-        ds1 = ds.sel(forecast_hour=slice(0, 24*7)).mean(['forecast_hour', 'ensemble'])
-        ds1 = ds1.where(ds1.IVT >= 250)
+        executor = concurrent.futures.ThreadPoolExecutor()
+        future = executor.submit(background_ivt_calculation, ds)
 
-        # subset ds to the select points
         self.get_lat_lons_from_txt_file()
         x = xr.DataArray(self.lons, dims=['location'])
         y = xr.DataArray(self.lats, dims=['location'])
@@ -244,21 +276,32 @@ class load_datasets:
 
         ## Calculate probability and duration IVT >= threshold
         thresholds = [100, 150, 250, 500, 750, 1000]
+        # Precompute data_size and valid_mask once
+        ivt = ds.IVT  # shape: (forecast_hour, ensemble, location)
+        ens_size = ivt.sizes['ensemble']
+
+        data_size = ivt.count(dim='ensemble')  # (forecast_hour, location)
+        valid_mask = data_size >= self.datasize_min
+
+        # Prepare result lists
         probability_lst = []
         duration_lst = []
-        for i, thres in enumerate(thresholds):
-            data_size = ds.IVT.count(dim='ensemble')
-            ## set ensemble size to nan if # of ensembles is not > 50% for GEFS and ECMWF
-            data_size = data_size.where(data_size >= self.datasize_min)
-            tmp = ds.IVT.where(ds.IVT >= thres) # find where IVT exceeds threshold
 
-            # sum the number of ensembles where IVT exceeds threshold
-            probability = tmp.count(dim='ensemble') / data_size
-            probability_lst.append(probability)
+        def process_threshold(thres):
+            mask = ivt >= thres
 
-            # sum the number of time steps where IVT exceeds threshold
-            duration = tmp.count(dim='forecast_hour')*3 # three hour time intervals
-            duration_lst.append(duration)
+            count_ens = mask.sum(dim='ensemble') / ens_size
+            count_ens = count_ens.where(valid_mask)
+
+            count_time = mask.sum(dim='forecast_hour') * 3
+            count_time = count_time.where(valid_mask)
+
+            return count_ens, count_time
+
+        with ThreadPoolExecutor() as executor:
+            results = list(executor.map(process_threshold, thresholds))
+
+        probability_lst, duration_lst = zip(*results)
 
         # merge duration and probability datasets
         duration_ds = xr.concat(duration_lst, pd.Index(thresholds, name="threshold"))
@@ -289,5 +332,5 @@ class load_datasets:
 
         ##Add attribute information
         final_ds = final_ds.assign_attrs(model_init_date=self.model_init_date)
-
+        ds1 = future.result()
         return final_ds, ds1

@@ -44,7 +44,7 @@ from cw3e_tools import ivt_colors, plot_terrain, plot_cw3e_logo, get_every_other
 
 class landfall_tool_IVT_magnitude:
     '''
-    Returns a .png file with Cordeira AR Landfall Tool (IVT magnitude) figure with input locations, chosen Forecast product, for Control or Ensemble Mean   
+    Returns a .png file with Cordeira AR Landfall Tool (IVT magnitude) figure with input locations, chosen Forecast product, for Control or Ensemble Mean
     Parameters
     ----------
     ptloc : str
@@ -54,17 +54,20 @@ class landfall_tool_IVT_magnitude:
         name of the forecast product - options include GEFS, ECMWF, ECMWF-GEFS, and West-WRF
     mag_type : str
         choose the magnitude type to calculate - ensemble or control (ensemble = 0)
-  
+
     Returns
     -------
     fig : figure
         png file of the figure
-    
+
     '''
-    
-    def __init__(self, ds_pt, loc, ptloc, forecast='GEFS', mag_type='control', orientation='latitude', path_to_out='/home/cw3eit/ARPortal/gefs/scripts/ar_landfall_tool/figs/'):
+
+    def __init__(self, ds_pt, loc, ptloc, forecast='GEFS', mag_type='control', orientation='latitude', path_to_out='/data/projects/operations/LandfallTools/figs/'):
         self.path_to_out = path_to_out
-        self.date_string = ds_pt.model_init_date.strftime('%Y%m%d%H')
+        if forecast == 'ECMWF-GEFS':
+         self.date_string = ds_pt.model_init_date
+        else:
+         self.date_string = ds_pt.model_init_date.strftime('%Y%m%d%H')
         self.model_init_date = datetime.datetime.strptime(self.date_string, '%Y%m%d%H')
         self.loc = loc
         self.ptloc = ptloc
@@ -78,7 +81,7 @@ class landfall_tool_IVT_magnitude:
             self.name = 'Ensemble Mean'
         else:
             self.name = 'Control'
-                  
+
         ## format dicts for plots
         self.fontsize = 12
         self.kw_ticklabels = {'size': self.fontsize-2, 'color': 'dimgray', 'weight': 'light'}
@@ -87,7 +90,7 @@ class landfall_tool_IVT_magnitude:
                          'labelsize': self.fontsize-2, 'labelcolor': 'dimgray'}
         self.IVT_units = 'kg m$^{-1}$ s$^{-1}$'
         self.fig_title = 'CW3E AR Landfall Tool | {0}'.format(self.forecast)
-        
+
         if self.loc == 'US-west_old':
             self.grant_info = 'FIRO/CA-AR Program'
         elif self.loc == 'US-west':
@@ -96,7 +99,7 @@ class landfall_tool_IVT_magnitude:
             self.grant_info = 'NSF #2052972'
         self.disclaimer = 'Forecasts support {0} | Intended for research purposes only'.format(self.grant_info)
         self.cbar_lbl = '{0} IVT ({1})'.format(self.name, self.IVT_units)
-            
+
     def get_date_information(self):
 
         hr = self.model_init_date.strftime('%H')
@@ -106,16 +109,16 @@ class landfall_tool_IVT_magnitude:
         year = self.model_init_date.strftime('%Y')
         self.xlbl = "<-------- Forecast Day from {0}Z on {1} {2} {3} {4} --------".format(hr, weekday, day, month, year)
         self.title = 'Model Run: {0}Z {1} {2} {3} {4}'.format(hr, weekday, day, month, year)
-                  
+
         ## create datetime labels for the x-axis
         date_lst = pd.date_range(self.model_init_date, periods=17, freq='1D')
         xtck_lbl = []
         for i, x in enumerate(date_lst):
             t = pd.to_datetime(str(x))
             xtck_lbl.append(t.strftime('%m/%d'))
-        
+
         self.xtck_lbl = xtck_lbl
-        
+
     def get_shared_axis_map_ticks(self):
         '''
         Returns
@@ -129,7 +132,7 @@ class landfall_tool_IVT_magnitude:
         '''
         if self.orientation == 'latitude':
             # this extends the domain of the plot 2 degrees in the longitude direction
-            londx=3. 
+            londx=3.
             lonmin = self.lons.min()-londx
             lonmax = self.lons.max()+londx
             # this extends the domain 0.25 degrees in the latitude direction
@@ -154,7 +157,7 @@ class landfall_tool_IVT_magnitude:
         ## set nice intervals for dx based on diff(lonmax, lonmin)
         if (lonmax - lonmin) < 14:
             dux = 2
-        else: 
+        else:
             dux = 5
 
         ## set nice intervals for dy based on diff(latmax, latmin)
@@ -165,9 +168,9 @@ class landfall_tool_IVT_magnitude:
 
         self.dx = np.arange(myround(lonmin+londx, dux),(myround((lonmax-londx)+dux, dux)),dux)
         self.dy = np.arange(myround(latmin+latdy, duy),(myround((latmax-latdy)+duy, duy)),duy)
-            
+
     def plot_magnitude_latitude(self, ax):
-        
+
         if self.forecast == 'ECMWF-GEFS':
             cmap = plt.cm.get_cmap('BrBG')
             self.cflevs = np.arange(-275, 300, 25)
@@ -175,13 +178,12 @@ class landfall_tool_IVT_magnitude:
         else:
             cmap, norm, bnds = cw3e.cmap('ivt_magnitude')
             self.cflevs = bnds
-        
+
         # Contour Filled
         x = self.magnitude.forecast_hour.values / 24 # convert forecast hour to forecast day
         y = self.magnitude.lat.values
         data = np.flipud(np.rot90(self.magnitude.values)) # rotate data 90 degrees and flip up down
-        
-        
+
         self.cf = ax.pcolormesh(x, y, data, cmap=cmap, norm=norm, rasterized=True)
         ax.invert_xaxis() # invert x-axis so that time reads from right to left
 
@@ -197,7 +199,7 @@ class landfall_tool_IVT_magnitude:
         ax.xaxis.set_major_formatter(mticker.FixedFormatter(positions))
         for tick in ax.get_xticklabels():
             tick.set_fontweight('light')
-            
+
         # labels are days since forecast initialization
         for i, (x,xlbl) in enumerate(zip(positions[1:-1], self.xtck_lbl[1:-1])):
             ax.annotate(xlbl, # this is the text
@@ -209,7 +211,7 @@ class landfall_tool_IVT_magnitude:
                         xycoords='data',
                         zorder=200,
                         fontsize=self.fontsize-4)
-            
+
         ax.set_xlim(16.125, 0)
 
         # apply gridlines
@@ -224,11 +226,11 @@ class landfall_tool_IVT_magnitude:
         ax.set_ylabel("Latitude", fontsize=self.fontsize)
         ax.set_xlabel(self.xlbl, fontsize=self.fontsize)
         ax.set_title(self.fig_title, loc='left', fontsize=self.fontsize)
-        
+
         return ax
-    
+
     def plot_magnitude_longitude(self, ax):
-        
+
         if self.forecast == 'ECMWF-GEFS':
             cmap = plt.cm.get_cmap('BrBG')
             self.cflevs = np.arange(-275, 300, 25)
@@ -236,7 +238,7 @@ class landfall_tool_IVT_magnitude:
         else:
             cmap, norm, bnds = cw3e.cmap('ivt_magnitude')
             self.cflevs = bnds
-        
+
         # Contour Filled
         y = self.magnitude.forecast_hour / 24 # convert forecast hour to forecast day
         x = self.magnitude.lon
@@ -249,14 +251,14 @@ class landfall_tool_IVT_magnitude:
         ax.xaxis.set_major_formatter(LONGITUDE_FORMATTER)
         for tick in ax.get_xticklabels():
             tick.set_fontweight('light')
-        
+
         # apply ytick parameters
         positions = np.arange(0, 17, 1)
         ax.yaxis.set_major_locator(mticker.FixedLocator(positions))
         ax.yaxis.set_major_formatter(mticker.FixedFormatter(positions))
         for tick in ax.get_yticklabels():
             tick.set_fontweight('light')
-        
+
         # labels are days since forecast initialization
         for i, (y,xlbl) in enumerate(zip(positions[1:-1], self.xtck_lbl[1:-1])):
             ax.annotate(xlbl, # this is the text
@@ -269,7 +271,7 @@ class landfall_tool_IVT_magnitude:
                         zorder=200,
                         fontsize=self.fontsize-2)
         ax.set_ylim(0, 16.125)
-        
+
         # apply gridlines
         ax.minorticks_on()
         ax.grid(visible=None, which='both', axis='x', **self.kw_grid)
@@ -277,25 +279,25 @@ class landfall_tool_IVT_magnitude:
         ax.tick_params(axis='y', which='minor', left=False)
         ax.tick_params(axis='y', which='major', **self.kw_ticks)
         ax.tick_params(axis='x', which='major', direction='out', **self.kw_ticks)
-        
+
         ## labels and subtitles
         ax.set_ylabel(self.xlbl, fontsize=self.fontsize)
-        
+
         plt.gca().invert_yaxis()
         plt.gca().invert_xaxis()
-        
+
         return ax
-    
-                  
+
+
     def plot_map(self, ax, mapcrs, datacrs):
-        ## Set up extent         
+        ## Set up extent
         ax.set_extent(self.ext, crs=datacrs)
-        
+
         ## Add elevation contours
         ax = plot_terrain(ax, self.ext)
 
         # Add map features (continents and country borders)
-        # ax.add_feature(cfeature.LAND, facecolor='0.9')      
+        # ax.add_feature(cfeature.LAND, facecolor='0.9')
         ax.add_feature(cfeature.BORDERS, edgecolor='0.4', linewidth=0.4)
         ax.add_feature(cfeature.STATES, edgecolor='0.2', linewidth=0.2)
         ax.add_feature(cfeature.OCEAN, edgecolor='0.4', facecolor='lightskyblue', linewidth=0.2)
@@ -321,41 +323,41 @@ class landfall_tool_IVT_magnitude:
 
         gl.xlines = True
         gl.ylines = True
-        
+
         # apply tick parameters
         ax.set_xticks(self.dx, crs=datacrs)
         ax.set_yticks(self.dy, crs=datacrs)
         plt.yticks(color='w', size=1) # hack: make the ytick labels white so they don't show up
         plt.xticks(color='w', size=1) # hack: make the ytick labels white so they don't show up
-         
+
         ## plot point locations
         for i, (x, y) in enumerate(zip(self.lons, self.lats)):
             ax.plot(x, y, 'ko', markersize=mk_size, transform=datacrs)
-            
+
         if self.orientation == 'longitude':
             ax.set_title(self.fig_title, loc='left', fontsize=self.fontsize)
-        
+
         ax.set_title(self.title, loc='right', fontsize=self.fontsize)
         ax.set_extent(self.ext, crs=datacrs)
         ax.set_aspect('auto')
         return ax
-    
+
     def create_figure(self):
         # GEFS_LandfallTool_Control_coast_current.png
         fname1 = self.path_to_out+'{0}/{1}_LandfallTool_{2}_{3}_current'.format(self.loc, self.forecast, self.mag_type, self.ptloc)
         fname2 = self.path_to_out+'{0}/{1}_LandfallTool_{2}_{3}_{4}'.format(self.loc, self.forecast, self.mag_type, self.ptloc, self.date_string)
         fmt = 'png'
-        
+
         ## set font
-        current_dpi=600 #recommended dpi of 600
+        current_dpi=300 #recommended dpi of 600
         base_dpi=100
         scaling_factor = (current_dpi / base_dpi)**0.13
         set_cw3e_font(current_dpi, scaling_factor)
-        
+
         # get tick and label information
         self.get_date_information()
         self.get_shared_axis_map_ticks()
-        
+
         if self.orientation == 'latitude':
             fig = plt.figure(figsize=(13., 6))
             fig.dpi = current_dpi
@@ -364,9 +366,9 @@ class landfall_tool_IVT_magnitude:
             ## Use gridspec to set up a plot with a series of subplots that is
             ## n-rows by n-columns
             gs = GridSpec(nrows, ncols, height_ratios=[1, 0.05, 0.05, 0.05, 0.05], width_ratios = [2.25, 0.75], wspace=0.1, hspace=0.2)
-            ## use gs[rows index, columns index] to access grids         
+            ## use gs[rows index, columns index] to access grids
 
-            ## Add probability plot         
+            ## Add probability plot
             ax = fig.add_subplot(gs[0, 0])
             self.plot_magnitude_latitude(ax)
 
@@ -386,7 +388,7 @@ class landfall_tool_IVT_magnitude:
             ## Add map
             ax = fig.add_subplot(gs[0, 1], projection=mapcrs)
             self.plot_map(ax, mapcrs, datacrs)
-            
+
             ## labels and subtitles
             ax = fig.add_subplot(gs[4, :])
             ax.axis('off')
@@ -400,8 +402,8 @@ class landfall_tool_IVT_magnitude:
             ## Add CW3E logo
             ax = fig.add_subplot(gs[1:, 1])
             ax = plot_cw3e_logo(ax, orientation='horizontal')
-            
-        
+
+
         elif self.orientation == 'longitude':
             fig = plt.figure(figsize=(9, 12))
             fig.dpi = current_dpi
@@ -411,7 +413,7 @@ class landfall_tool_IVT_magnitude:
             ## n-rows by n-columns
             gs = GridSpec(nrows, ncols, height_ratios=[0.7, 1, 0.02, 0.05, 0.05, 0.05], width_ratios = [0.75, 0.25], hspace=0.06, wspace=0.02)
             ## use gs[rows index, columns index] to access grids
-            ## Add probability plot         
+            ## Add probability plot
             ax = fig.add_subplot(gs[1, :])
             self.plot_magnitude_longitude(ax)
 
@@ -424,7 +426,7 @@ class landfall_tool_IVT_magnitude:
             cb = Colorbar(ax = cbax, mappable = self.cf, orientation = 'horizontal', ticklocation = 'bottom', ticks=cbarticks)
             cb.ax.set_xticklabels(["{0}".format(i) for i in cb.get_ticks()], **self.kw_ticklabels)  # horizontally oriented colorbar
             cb.set_label(self.cbar_lbl, fontsize=self.fontsize)
-       
+
             # Set up projection information for map
             mapcrs = ccrs.PlateCarree()
             datacrs = ccrs.PlateCarree()
@@ -432,7 +434,7 @@ class landfall_tool_IVT_magnitude:
             ax = fig.add_subplot(gs[0, :], projection=mapcrs)
             self.plot_map(ax, mapcrs, datacrs)
 
-                 
+
             ## labels and subtitles
             ax = fig.add_subplot(gs[5, 0])
             ax.axis('off')
@@ -446,8 +448,8 @@ class landfall_tool_IVT_magnitude:
             ## Add CW3E logo
             ax = fig.add_subplot(gs[3:, 1])
             ax = plot_cw3e_logo(ax, orientation='horizontal')
-            
-        
+
+
         fig.savefig('%s.%s' %(fname1, fmt), bbox_inches='tight', dpi=fig.dpi) # save generic "current"
         fig.savefig('%s.%s' %(fname2, fmt), bbox_inches='tight', dpi=fig.dpi) # save with date/time
         # close figure
