@@ -453,4 +453,4 @@ class landfall_tool_IVT_magnitude:
         fig.savefig('%s.%s' %(fname1, fmt), bbox_inches='tight', dpi=fig.dpi) # save generic "current"
         fig.savefig('%s.%s' %(fname2, fmt), bbox_inches='tight', dpi=fig.dpi) # save with date/time
         # close figure
-        plt.close(plt.gcf())
+        plt.close(fig)
