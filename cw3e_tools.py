@@ -154,7 +154,7 @@ class load_datasets:
         if self.forecast == 'W-WRF':
             self.date_string = date_string[2]
         else:
-            self.date_string = date_string[0]
+            self.date_string = date_string[-1]
 
         self.model_init_date = datetime.datetime.strptime(self.date_string, '%Y%m%d%H')
         self.ptloc = ptloc
