@@ -458,3 +458,10 @@ class landfall_tool_contour:
 
             ## Add CW3E logo
             ax = fig.add_subplot(gs[3:, 1])
+            ax = plot_cw3e_logo(ax, orientation='horizontal')
+
+        fig.savefig('%s.%s' %(fname1, fmt), bbox_inches='tight', dpi=fig.dpi)
+        fig.savefig('%s.%s' %(fname2, fmt), bbox_inches='tight', dpi=fig.dpi)
+        # close figure
+        plt.close(fig)
+

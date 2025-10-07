@@ -632,4 +632,5 @@ class landfall_tool_vector:
         fig.savefig('%s.%s' %(fname1, fmt), bbox_inches='tight', dpi=fig.dpi)
         fig.savefig('%s.%s' %(fname2, fmt), bbox_inches='tight', dpi=fig.dpi)
         # close figure
-        plt.close(plt.gcf())
+        plt.close(fig)
+
