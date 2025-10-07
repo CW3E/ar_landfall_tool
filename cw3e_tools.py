@@ -136,7 +136,7 @@ class load_datasets:
             self.ensemble_name = 'ECMWF'
             self.datasize_min = 25.
         elif forecast == 'W-WRF':
-            self.fpath = '/data/downloaded/WWRF-NRT/2024-2025/Ensemble_IVT/'
+            self.fpath = '/data/downloaded/WWRF-NRT/2025-2026/Ensemble_IVT/'
             self.ensemble_name = 'West-WRF'
             self.datasize_min = 50.
         else:
