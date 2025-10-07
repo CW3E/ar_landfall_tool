@@ -242,29 +242,11 @@ class load_datasets:
         ds = ds.assign_coords(lon=((ds.lon + 180) % 360 - 180)).sortby('lon')
 
         if self.forecast == 'ECMWF':
-         ds = ds.rename({'forecast_time': 'forecast_hour'})
-         ds['forecast_hour'] = ds.forecast_hour * 3
-         if self.loc == 'US-west':
-          ds = ds.sel(lon=slice(-145., -105), lat=slice(25, 60))
-         elif self.loc == 'SAK':
-          ds = ds.sel(lon=slice(-166., -129), lat=slice(53, 63))
-         elif self.loc == 'AK':
-          ds = ds.sel(lon=slice(-170., -155), lat=slice(54, 71))
+            ds = ds.rename({'forecast_time': 'forecast_hour'})
+            if int(self.model_init_date.strftime('%Y')) > 2020:
+                ds['forecast_hour'] = ds.forecast_hour * 3
         elif self.forecast == 'W-WRF':
-         ds = ds.rename({'ensembles': 'ensemble'})
-         if self.loc == 'US-west':
-          ds = ds.sel(lon=slice(-145., -105), lat=slice(25, 60))
-         elif self.loc == 'SAK':
-          ds = ds.sel(lon=slice(-166., -129), lat=slice(53, 63))
-         elif self.loc == 'AK':
-          ds = ds.sel(lon=slice(-170., -155), lat=slice(54, 71))
-        elif self.forecast == 'GEFS':
-         if self.loc == 'US-west':
-          ds = ds.sel(lon=slice(-145., -105), lat=slice(60, 25))
-         elif self.loc == 'SAK':
-          ds = ds.sel(lon=slice(-166., -129), lat=slice(63, 53))
-         elif self.loc == 'AK':
-          ds = ds.sel(lon=slice(-170., -155), lat=slice(71, 54))
+            ds = ds.rename({'ensembles': 'ensemble'})
 
         executor = concurrent.futures.ThreadPoolExecutor()
         future = executor.submit(background_ivt_calculation, ds)

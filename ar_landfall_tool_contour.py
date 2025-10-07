@@ -353,8 +353,10 @@ class landfall_tool_contour:
         return ax
 
     def create_figure(self):
-        fname1 = self.path_to_out+'{0}/{1}_LandfallTool_{2}_{3}_current'.format(self.loc, self.forecast, self.threshold, self.ptloc)
-        fname2 = self.path_to_out+'{0}/{1}_LandfallTool_{2}_{3}_{4}'.format(self.loc, self.forecast, self.threshold, self.ptloc, self.date_string)
+        outpath = self.path_to_out+f'{self.loc}/'
+        os.makedirs(outpath, exist_ok=True)
+        fname1 = outpath+f'{self.forecast}_LandfallTool_{self.threshold}_{self.ptloc}_current'
+        fname2 = outpath+f'{self.forecast}_LandfallTool_{self.threshold}_{self.ptloc}_{self.date_string}'
         fmt = 'png'
 
         ## set font

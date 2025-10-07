@@ -344,8 +344,10 @@ class landfall_tool_IVT_magnitude:
 
     def create_figure(self):
         # GEFS_LandfallTool_Control_coast_current.png
-        fname1 = self.path_to_out+'{0}/{1}_LandfallTool_{2}_{3}_current'.format(self.loc, self.forecast, self.mag_type, self.ptloc)
-        fname2 = self.path_to_out+'{0}/{1}_LandfallTool_{2}_{3}_{4}'.format(self.loc, self.forecast, self.mag_type, self.ptloc, self.date_string)
+        outpath = self.path_to_out+f'{self.loc}/'
+        os.makedirs(outpath, exist_ok=True)
+        fname1 = outpath+f'{self.forecast}_LandfallTool_{self.mag_type}_{self.ptloc}_current'
+        fname2 = outpath+f'{self.forecast}_LandfallTool_{self.mag_type}_{self.ptloc}_{self.date_string}'
         fmt = 'png'
 
         ## set font
