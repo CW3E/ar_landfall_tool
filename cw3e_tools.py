@@ -146,6 +146,11 @@ class load_datasets:
         if fname is None:
             ## find the most recent file in the currect directory
             list_of_files = glob.glob(self.fpath+'*.nc')
+            if self.forecast == 'GEFS':
+                list_of_files = [
+                    f for f in list_of_files
+                    if re.match(r'.*GEFS_IVT_\d{10}\.nc$', os.path.basename(f))
+                ]
             self.fname = max(list_of_files, key=os.path.getctime)
 
         # pull the initialization date from the filename
@@ -154,7 +159,7 @@ class load_datasets:
         if self.forecast == 'W-WRF':
             self.date_string = date_string[2]
         else:
-            self.date_string = date_string[-1]
+            self.date_string = date_string[0]
 
         self.model_init_date = datetime.datetime.strptime(self.date_string, '%Y%m%d%H')
         self.ptloc = ptloc
@@ -245,8 +250,27 @@ class load_datasets:
             ds = ds.rename({'forecast_time': 'forecast_hour'})
             if int(self.model_init_date.strftime('%Y')) > 2020:
                 ds['forecast_hour'] = ds.forecast_hour * 3
+            if self.loc == 'US-west':
+                ds = ds.sel(lon=slice(-145., -105), lat=slice(25, 60))
+            elif self.loc == 'SAK':
+                ds = ds.sel(lon=slice(-166., -129), lat=slice(53, 63))
+            elif self.loc == 'AK':
+                ds = ds.sel(lon=slice(-170., -155), lat=slice(54, 71))
         elif self.forecast == 'W-WRF':
             ds = ds.rename({'ensembles': 'ensemble'})
+            if self.loc == 'US-west':
+                ds = ds.sel(lon=slice(-145., -105), lat=slice(25, 60))
+            elif self.loc == 'SAK':
+                ds = ds.sel(lon=slice(-166., -129), lat=slice(53, 63))
+            elif self.loc == 'AK':
+                ds = ds.sel(lon=slice(-170., -155), lat=slice(54, 71))
+        elif self.forecast == 'GEFS':
+            if self.loc == 'US-west':
+                ds = ds.sel(lon=slice(-145., -105), lat=slice(60, 25))
+            elif self.loc == 'SAK':
+                ds = ds.sel(lon=slice(-166., -129), lat=slice(63, 53))
+            elif self.loc == 'AK':
+                ds = ds.sel(lon=slice(-170., -155), lat=slice(71, 54))
 
         executor = concurrent.futures.ThreadPoolExecutor()
         future = executor.submit(background_ivt_calculation, ds)
