@@ -123,60 +123,46 @@ class load_datasets:
         grb file downloaded for current run of figures
 
     '''
-    def __init__(self, forecast, loc, ptloc, fname=None):
-        path_to_data = '/data/projects/derived_products/'
+    def __init__(self, model, loc, ptloc, init_date):
         self.path_to_out = '/data/projects/operations/LandfallTools/ar_landfall_tool/data/'
-        self.forecast = forecast
+        self.forecast = model
+        self.model_init_date = init_date
+        self.ptloc = ptloc
+        self.loc = loc
+        
         if self.forecast == 'GEFS':
-            self.fpath = path_to_data + 'GEFS_IVT/data/'
+            self.fpath = '/data/projects/derived_products/GEFS_IVT/data/'
+            self.fname = f'{self.fpath}GEFS_IVT_{self.model_init_date}.nc'
             self.ensemble_name = 'GEFS'
             self.datasize_min = 15.
+            
+            
         elif self.forecast == 'ECMWF' or self.forecast == 'ECMWF-GEFS':
-            self.fpath = path_to_data + 'ECMWF_IVT/Ensemble/'
+            self.fpath = '/data/projects/derived_products/ECMWF_IVT/Ensemble/'
+            self.fname = f'{self.fpath}IVT_EC_{self.model_init_date}.nc'
             self.ensemble_name = 'ECMWF'
             self.datasize_min = 25.
-        elif forecast == 'W-WRF':
+            
+        elif self.forecast == 'W-WRF':
             self.fpath = '/data/downloaded/WWRF-NRT/2025-2026/Ensemble_IVT/'
+            self.fname = f'{self.fpath}IVT_WWRF_{self.model_init_date}.nc'
             self.ensemble_name = 'West-WRF'
             self.datasize_min = 50.
         else:
             print('Forecast product not available! Please choose either GEFS, ECMWF, ECMWF-GEFS, or W-WRF.')
-        if fname is not None:
-            self.fname = fname
-        if fname is None:
-            ## find the most recent file in the currect directory
-            list_of_files = glob.glob(self.fpath+'*.nc')
-            if self.forecast == 'GEFS':
-                list_of_files = [
-                    f for f in list_of_files
-                    if re.match(r'.*GEFS_IVT_\d{10}\.nc$', os.path.basename(f))
-                ]
-            self.fname = max(list_of_files, key=os.path.getctime)
-
-        # pull the initialization date from the filename
-        regex = re.compile(r'\d+')
-        date_string = regex.findall(self.fname)
-        if self.forecast == 'W-WRF':
-            self.date_string = date_string[2]
-        else:
-            self.date_string = date_string[0]
-
-        self.model_init_date = datetime.datetime.strptime(self.date_string, '%Y%m%d%H')
-        self.ptloc = ptloc
-        self.loc = loc
 
     def download_QPF_dataset(self):
-        date = self.model_init_date.strftime('%Y%m%d') # model init date
-        hr = self.model_init_date.strftime('%H') # model init hour
+        dt_init = datetime.strptime(self.model_init_date, "%Y%m%d%H")
+        date = dt_init.strftime('%Y%m%d') # model init date
+        hr = dt_init.strftime('%H') # model init hour
 
         if self.forecast == 'GEFS':
             ## download from NOMADS
             print(date, hr)
             subprocess.check_call(["download_QPF.sh", date, hr], shell=True) # downloads the latest QPF data
         else:
-            mmdyhr_init = self.model_init_date.strftime('%m%d%H') # month-day-hr init date
-            date1 = datetime.datetime.strptime(self.date_string, '%Y%m%d%H')
-            date2 = date1 + datetime.timedelta(days=7)
+            mmdyhr_init = dt_init.strftime('%m%d%H') # month-day-hr init date
+            date2 = dt_init + datetime.timedelta(days=7)
             date2 = date2.strftime('%m%d%H') # valid date
             fpath = '/data/downloaded/Forecasts/ECMWF/NRT_data/{0}{1}/'.format(date, hr)
             fname = 'S1D{0}00{1}001'.format(mmdyhr_init, date2)
@@ -188,8 +174,9 @@ class load_datasets:
         if self.forecast == 'GEFS':
             try:
                 ## this method directly opens data from NOMADS
-                date = self.model_init_date.strftime('%Y%m%d') # model init date
-                hr = self.model_init_date.strftime('%H') # model init hour
+                dt_init = datetime.strptime(self.model_init_date, "%Y%m%d%H")
+                date = dt_init.strftime('%Y%m%d') # model init date
+                hr = dt_init.strftime('%H') # model init hour
                 url = 'https://nomads.ncep.noaa.gov/dods/gfs_0p25/gfs{0}/gfs_0p25_{1}z'.format(date, hr)
                 ds = xr.open_dataset(url, decode_times=False)
                 ds = ds.isel(time=7*8) # get 7-day QPF - the variable is already cumulative
@@ -227,9 +214,6 @@ class load_datasets:
         self.lons = df['longitude'].values
         self.lats = df['latitude'].values
 
-
-
-
     def calc_ivt_vars(self):
 
         def background_ivt_calculation(ds):
@@ -239,38 +223,31 @@ class load_datasets:
             return ds1
 
         # Load and preprocess dataset
+        print('Reading IVT data ...')
         ds = xr.open_dataset(self.fname)
         ds = ds.astype('float16')
         for coord in ds.coords:
             if np.issubdtype(ds.coords[coord].dtype, np.floating):
                 ds.coords[coord] = ds.coords[coord].astype('float16')
         ds = ds.assign_coords(lon=((ds.lon + 180) % 360 - 180)).sortby('lon')
-
+        
+        ## subset data based on loc
+        if self.loc == 'US-west':
+            ds = ds.sel(lon=slice(-145., -105), lat=slice(25, 60))
+        elif self.loc == 'SAK':
+            ds = ds.sel(lon=slice(-166., -129), lat=slice(53, 63))
+        elif self.loc == 'AK':
+            ds = ds.sel(lon=slice(-170., -155), lat=slice(54, 71))
+        
+        ## updates specific to model name
         if self.forecast == 'ECMWF':
             ds = ds.rename({'forecast_time': 'forecast_hour'})
-            if int(self.model_init_date.strftime('%Y')) > 2020:
+            dt_init = datetime.strptime(self.model_init_date, "%Y%m%d%H")
+            if int(dt_init.strftime('%Y')) > 2020:
                 ds['forecast_hour'] = ds.forecast_hour * 3
-            if self.loc == 'US-west':
-                ds = ds.sel(lon=slice(-145., -105), lat=slice(25, 60))
-            elif self.loc == 'SAK':
-                ds = ds.sel(lon=slice(-166., -129), lat=slice(53, 63))
-            elif self.loc == 'AK':
-                ds = ds.sel(lon=slice(-170., -155), lat=slice(54, 71))
+            
         elif self.forecast == 'W-WRF':
             ds = ds.rename({'ensembles': 'ensemble'})
-            if self.loc == 'US-west':
-                ds = ds.sel(lon=slice(-145., -105), lat=slice(25, 60))
-            elif self.loc == 'SAK':
-                ds = ds.sel(lon=slice(-166., -129), lat=slice(53, 63))
-            elif self.loc == 'AK':
-                ds = ds.sel(lon=slice(-170., -155), lat=slice(54, 71))
-        elif self.forecast == 'GEFS':
-            if self.loc == 'US-west':
-                ds = ds.sel(lon=slice(-145., -105), lat=slice(60, 25))
-            elif self.loc == 'SAK':
-                ds = ds.sel(lon=slice(-166., -129), lat=slice(63, 53))
-            elif self.loc == 'AK':
-                ds = ds.sel(lon=slice(-170., -155), lat=slice(71, 54))
 
         executor = concurrent.futures.ThreadPoolExecutor()
         future = executor.submit(background_ivt_calculation, ds)
@@ -314,10 +291,24 @@ class load_datasets:
         prob_ds = xr.concat(probability_lst, pd.Index(thresholds, name="threshold"))
 
         ## Calculate Vectors
-        uvec = ds.uIVT.mean('ensemble') # get the ensemble mean uIVT
-        vvec = ds.vIVT.mean('ensemble') # get the ensemble mean vIVT
+        print('Computing ensemble mean...')
+        # get the ensemble mean vIVT and uIVT
+        uvec = (
+            ds.uIVT.astype('float64')
+            .where(data_size >= self.datasize_min)
+            .mean(dim='ensemble')
+        )
+        vvec = (
+            ds.vIVT.astype('float64')
+            .where(data_size >= self.datasize_min)
+            .mean(dim='ensemble')
+        )
         # get the ensemble mean IVT where there are enough ensembles
-        ensemble_mean = ds.IVT.where(data_size >= self.datasize_min).mean(dim='ensemble')
+        ensemble_mean = (
+            ds.IVT.astype('float64')
+            .where(data_size >= self.datasize_min)
+            .mean(dim='ensemble')
+        )
 
         # normalize vectors
         u = uvec / ensemble_mean

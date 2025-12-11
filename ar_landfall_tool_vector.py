@@ -69,10 +69,7 @@ class landfall_tool_vector:
 
     def __init__(self, ds_pt, ds, prec, loc, ptloc, forecast='GEFS', threshold=250, orientation='latitude', path_to_out='/data/projects/operations/LandfallTools/figs/'):
         self.path_to_out = path_to_out
-        if forecast == 'ECMWF-GEFS':
-         self.date_string = ds_pt.model_init_date
-        else:
-         self.date_string = ds_pt.model_init_date.strftime('%Y%m%d%H')
+        self.date_string = ds_pt.model_init_date
         self.model_init_date = datetime.datetime.strptime(self.date_string, '%Y%m%d%H')
         self.loc = loc
         self.ptloc = ptloc
