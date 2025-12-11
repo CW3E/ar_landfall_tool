@@ -14,14 +14,14 @@ To run all three regions with a singularity container:
 
 ```bash
 ## runs plots for GEFS
-singularity exec --bind /data:/data,/home:/home,/work:/work,/common:/common -e /data/projects/operations/LandfallTools/ar_landfall_tool/envs/ar_landfall_tool.sif /opt/conda/bin/python /home/cw3eit/ARPortal/gefs/scripts/ar_landfall_tool/run_tool.py "GEFS"
+singularity exec --bind /data:/data,/home:/home,/work:/work,/common:/common -e /data/projects/operations/LandfallTools/ar_landfall_tool/envs/ar_landfall_tool.sif /opt/conda/bin/python /home/cw3eit/ARPortal/gefs/scripts/ar_landfall_tool/run_tool.py "GEFS" "YYYYMMDDHH"
 
 ## runs plots for ECWMF
-singularity exec --bind /data:/data,/home:/home,/work:/work,/common:/common -e /data/projects/operations/LandfallTools/ar_landfall_tool/envs/ar_landfall_tool.sif /opt/conda/bin/python /home/cw3eit/ARPortal/gefs/scripts/ar_landfall_tool/run_tool.py "ECMWF"
+singularity exec --bind /data:/data,/home:/home,/work:/work,/common:/common -e /data/projects/operations/LandfallTools/ar_landfall_tool/envs/ar_landfall_tool.sif /opt/conda/bin/python /home/cw3eit/ARPortal/gefs/scripts/ar_landfall_tool/run_tool.py "ECMWF" "YYYYMMDDHH"
 
 ## runs plots for W-WRF
-singularity exec --bind /data:/data,/home:/home,/work:/work,/common:/common -e /data/projects/operations/LandfallTools/ar_landfall_tool/envs/ar_landfall_tool.sif /opt/conda/bin/python /home/cw3eit/ARPortal/gefs/scripts/ar_landfall_tool/run_tool.py "W-WRF"
+singularity exec --bind /data:/data,/home:/home,/work:/work,/common:/common -e /data/projects/operations/LandfallTools/ar_landfall_tool/envs/ar_landfall_tool.sif /opt/conda/bin/python /home/cw3eit/ARPortal/gefs/scripts/ar_landfall_tool/run_tool.py "W-WRF" "YYYYMMDDHH"
 
 ## runs plots for ECMWF-GEFS
-singularity exec --bind /data:/data,/home:/home,/work:/work,/common:/common -e /data/projects/operations/LandfallTools/ar_landfall_tool/envs/ar_landfall_tool.sif /opt/conda/bin/python /home/cw3eit/ARPortal/gefs/scripts/ar_landfall_tool/run_tool.py "ECMWF-GEFS"
+singularity exec --bind /data:/data,/home:/home,/work:/work,/common:/common -e /data/projects/operations/LandfallTools/ar_landfall_tool/envs/ar_landfall_tool.sif /opt/conda/bin/python /home/cw3eit/ARPortal/gefs/scripts/ar_landfall_tool/run_tool.py "ECMWF-GEFS" "YYYYMMDDHH"
 ```
