@@ -368,25 +368,11 @@ class LoadDatasets:
             if 'lon' in ds.dims:
                 chunking['lon'] = 200
 
-        # Ensure IVT magnitude exists, compute lazily using apply_ufunc for performance
-        if 'ivt' not in ds.data_vars:
-            # compute ivt = sqrt(uIVT^2 + vIVT^2)
-            ds = ds.assign(
-                ivt = xr.apply_ufunc(
-                    lambda u, v: np.sqrt(u*u + v*v),
-                    ds['uIVT'],
-                    ds['vIVT'],
-                    dask='parallelized',
-                    output_dtypes=[np.float32],
-                    vectorize=False,
-                )
-            )
-
         # Re-chunk dataset for efficient reductions
         ds = ds.chunk(chunking)
 
         # Compute data_size (number of non-missing ensembles) per (forecast_hour, lat, lon)
-        ivt = ds['ivt']
+        ivt = ds['IVT']
         if 'ensemble' not in ivt.dims:
             raise KeyError("IVT must have 'ensemble' dimension for these computations.")
         data_size = ivt.count(dim='ensemble')  # (forecast_hour, lat, lon)
@@ -405,25 +391,30 @@ class LoadDatasets:
         probability = mask.mean(dim='ensemble')  # lazy
 
         # Duration: count of forecast_hour where condition true -> sum over forecast_hour then * multiplier
-        # First sum over forecast_hour: dims (threshold, ensemble, lat, lon) -> then mean over ensemble?
+        # First sum over forecast_hour: dims (threshold, ensemble, lat, lon) -> then mean over ensemble
         # We want duration per (threshold, lat, lon) aggregated across forecast_hour.
         duration = mask.sum(dim='forecast_hour') * duration_multiplier  # dims (threshold, ensemble, lat, lon)
-        # For duration per location we likely want to aggregate across ensemble? In your original code you did
-        # hours = (mask.sum(dim='forecast_hour') * 3).where(valid_mask)  # where valid_mask has dims (forecast_hour, lat, lon)
-        # but earlier you counted hours without ensemble reduction; to match old behavior, reduce ensemble by fraction of ensemble?
-        # The original code used mask.sum(dim='forecast_hour')  (mask shape: (forecast_hour, ensemble, loc)) -> gave (ensemble, loc)
-        # then they did not reduce ensemble. In that code they later concatenated hours across thresholds with ensemble dimension removed because ds was point-subset with 'location'.
-        # For clarity here we'll compute duration as mean across ensemble after valid_mask is applied:
+        # compute duration as mean across ensemble after valid_mask is applied:
         duration = duration.mean(dim='ensemble')  # dims: (threshold, lat, lon)
-        # Apply valid_mask: data_size dims (forecast_hour, lat, lon) -> reduce to lat/lon by any or mean?  
-        # We will create a valid_mask_per_location that is True if any forecast_hour had enough ensembles (consistent with 'count >= datasize_min' in your code)
+        
         valid_loc = data_size.max(dim='forecast_hour') >= self.datasize_min  # dims (lat, lon)
         # Broadcast valid_loc to probability and duration (threshold, lat, lon)
         probability = probability.where(valid_loc)
         duration = duration.where(valid_loc)
+        
+        # Explicit threshold coordinate (CRITICAL)
+        threshold_coord = xr.DataArray(
+            thresholds,
+            dims="threshold",
+            name="threshold"
+        )
+
+        probability = probability.assign_coords(threshold=threshold_coord)
+        duration = duration.assign_coords(threshold=threshold_coord)
+
 
         # Ensemble means for u, v, ivt (reduce along ensemble)
-        ensemble_mean_ivt = ds['ivt'].where(data_size >= self.datasize_min).mean(dim='ensemble')
+        ensemble_mean_ivt = ds['IVT'].where(data_size >= self.datasize_min).mean(dim='ensemble')
         ensemble_mean_u = ds['uIVT'].where(data_size >= self.datasize_min).mean(dim='ensemble')
         ensemble_mean_v = ds['vIVT'].where(data_size >= self.datasize_min).mean(dim='ensemble')
 
@@ -433,7 +424,7 @@ class LoadDatasets:
             v_norm = (ensemble_mean_v / ensemble_mean_ivt).where(~np.isclose(ensemble_mean_ivt, 0))
 
         # Control ensemble member 0
-        control = ds['ivt'].sel(ensemble=0)
+        control = ds['IVT'].sel(ensemble=0)
 
         # Assemble intermediate dataset
         # Align dims: probability dims (threshold, forecast_hour, lat, lon) but we applied mean(dim='ensemble') so it is (threshold, forecast_hour, lat, lon)
