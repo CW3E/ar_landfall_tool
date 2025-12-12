@@ -129,9 +129,9 @@ class LoadDatasets:
 
         # ensure the (big) dataset is loaded and preprocessed once
         key = (self.forecast, self.model_init_date)
-        if key not in load_datasets._cached_ds_model:
-            load_datasets._cached_ds_model[key] = self.read_ivt_data()
-        self.ds_full: xr.Dataset = load_datasets._cached_ds_model[key]
+        if key not in LoadDatasets._cached_ds_model:
+            LoadDatasets._cached_ds_model[key] = self.read_ivt_data()
+        self.ds_full: xr.Dataset = LoadDatasets._cached_ds_model[key]
 
     # --------------------------
     # Internal helpers
