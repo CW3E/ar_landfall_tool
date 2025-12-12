@@ -102,75 +102,6 @@ def get_every_other_vector(x):
 def myround(x, base=5):
     return base * round(x/base)
 
-def extract_points_from_intermediate_zarr(
-    self,
-    zarr_path: str,
-    loc: str,
-    ptloc: str,
-    out_nc_path: Optional[str] = None,
-    method: str = "nearest",
-    save_nc: bool = True
-) -> xr.Dataset:
-    """
-    Open the intermediate Zarr store, subset to points defined by (loc, ptloc),
-    and optionally save the result as a small NetCDF for plotting.
-
-    Args
-    ----
-    zarr_path : str
-      Path to intermediate zarr saved by compute_and_save_intermediate_products.
-    loc : str
-      Location group (used to find lat/lons file path via self.path_to_out)
-    ptloc : str
-      Transect name (coast, foothills, inland).
-    out_nc_path : str, optional
-      Path to save extracted netCDF. If None, will be:
-      f"intermediate_{self.forecast}_{self.model_init_date}_{loc}_{ptloc}.nc"
-    method : str
-      Selection method for xr.sel (default 'nearest')
-    save_nc : bool
-      If True, save extracted dataset to netCDF (small file).
-
-    Returns
-    -------
-    ds_pt : xarray.Dataset
-      Point-subset dataset (contains probability, duration, ensemble_mean, u, v, control)
-    """
-
-    if out_nc_path is None:
-        out_nc_path = f"data/intermediate_{self.forecast}_{self.model_init_date}_{loc}_{ptloc}.nc"
-
-    # open zarr lazily
-    ds = xr.open_zarr(zarr_path, consolidated=True)
-
-    # read lat/lon file for the ptloc
-    textpts_fname = os.path.join(self.path_to_out, f'{loc}/latlon_{ptloc}.txt')
-    df = pd.read_csv(textpts_fname, header=None, sep=' ', names=['latitude', 'longitude'], engine='python')
-    df['longitude'] = df['longitude'] * -1
-    lons = df['longitude'].values
-    lats = df['latitude'].values
-
-    # Build DataArray for selection
-    x = xr.DataArray(lons, dims=['location'])
-    y = xr.DataArray(lats, dims=['location'])
-
-    # For probability which may have threshold & forecast_hour, use multi-dim selection
-    # We'll select lat/lon by nearest
-    ds_pt = ds.sel(lon=x, lat=y, method=method)
-
-    # Optional: add coords for the point names or indices
-    ds_pt = ds_pt.assign_coords(location=np.arange(len(lons)))
-    ds_pt = ds_pt.assign_coords(ptloc=np.array([ptloc]))
-
-    if save_nc:
-        # Save small netCDF (no compression by default)
-        out_dir = os.path.dirname(out_nc_path)
-        if out_dir and not os.path.exists(out_dir):
-            os.makedirs(out_dir, exist_ok=True)
-        ds_pt.to_netcdf(out_nc_path)
-
-    return ds_pt
-
 
 class LoadDatasets:
     """
@@ -555,6 +486,75 @@ class LoadDatasets:
         intermediate.to_zarr(out_zarr_path, mode="w", compute=compute, consolidated=True)
 
         return out_zarr_path
+    
+    def extract_points_from_intermediate_zarr(
+        self,
+        zarr_path: str,
+        loc: str,
+        ptloc: str,
+        out_nc_path: Optional[str] = None,
+        method: str = "nearest",
+        save_nc: bool = True
+    ) -> xr.Dataset:
+        """
+        Open the intermediate Zarr store, subset to points defined by (loc, ptloc),
+        and optionally save the result as a small NetCDF for plotting.
+
+        Args
+        ----
+        zarr_path : str
+          Path to intermediate zarr saved by compute_and_save_intermediate_products.
+        loc : str
+          Location group (used to find lat/lons file path via self.path_to_out)
+        ptloc : str
+          Transect name (coast, foothills, inland).
+        out_nc_path : str, optional
+          Path to save extracted netCDF. If None, will be:
+          f"intermediate_{self.forecast}_{self.model_init_date}_{loc}_{ptloc}.nc"
+        method : str
+          Selection method for xr.sel (default 'nearest')
+        save_nc : bool
+          If True, save extracted dataset to netCDF (small file).
+
+        Returns
+        -------
+        ds_pt : xarray.Dataset
+          Point-subset dataset (contains probability, duration, ensemble_mean, u, v, control)
+        """
+
+        if out_nc_path is None:
+            out_nc_path = f"data/intermediate_{self.forecast}_{self.model_init_date}_{loc}_{ptloc}.nc"
+
+        # open zarr lazily
+        ds = xr.open_zarr(zarr_path, consolidated=True)
+
+        # read lat/lon file for the ptloc
+        textpts_fname = os.path.join(self.path_to_out, f'{loc}/latlon_{ptloc}.txt')
+        df = pd.read_csv(textpts_fname, header=None, sep=' ', names=['latitude', 'longitude'], engine='python')
+        df['longitude'] = df['longitude'] * -1
+        lons = df['longitude'].values
+        lats = df['latitude'].values
+
+        # Build DataArray for selection
+        x = xr.DataArray(lons, dims=['location'])
+        y = xr.DataArray(lats, dims=['location'])
+
+        # For probability which may have threshold & forecast_hour, use multi-dim selection
+        # We'll select lat/lon by nearest
+        ds_pt = ds.sel(lon=x, lat=y, method=method)
+
+        # Optional: add coords for the point names or indices
+        ds_pt = ds_pt.assign_coords(location=np.arange(len(lons)))
+        ds_pt = ds_pt.assign_coords(ptloc=np.array([ptloc]))
+
+        if save_nc:
+            # Save small netCDF (no compression by default)
+            out_dir = os.path.dirname(out_nc_path)
+            if out_dir and not os.path.exists(out_dir):
+                os.makedirs(out_dir, exist_ok=True)
+            ds_pt.to_netcdf(out_nc_path)
+
+        return ds_pt
     
     def release_ivt_dataset(self):
         if self._ivt_ds is not None:
