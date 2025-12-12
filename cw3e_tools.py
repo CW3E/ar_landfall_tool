@@ -105,7 +105,7 @@ class LoadDatasets:
     repeatedly opening and preprocessing large .nc files.
 
     Usage:
-        loader = load_datasets('ECMWF', 'US-west', 'coast', '2025121100')
+        loader = LoadDatasets('ECMWF', 'US-west', 'coast', '2025121100')
         ds_pt, ds_full = loader.calc_ivt_vars()
 
     Public methods:
@@ -236,8 +236,8 @@ class LoadDatasets:
         Load precipitation (QPF) dataset. Cached per (forecast, init_date).
         """
         key = (self.forecast, self.model_init_date)
-        if key in load_datasets._cached_prec:
-            return load_datasets._cached_prec[key]
+        if key in LoadDatasets._cached_prec:
+            return LoadDatasets._cached_prec[key]
 
         # GEFS path: try remote open first, then local fallback
         if self.forecast == 'GEFS':
@@ -276,7 +276,7 @@ class LoadDatasets:
             prec = ds['tp'] * 39.3701  # meters -> inches
             prec = prec.rename({'longitude': 'lon', 'latitude': 'lat'})
 
-        load_datasets._cached_prec[key] = prec
+        LoadDatasets._cached_prec[key] = prec
         return prec
 
     # --------------------------
@@ -302,8 +302,8 @@ class LoadDatasets:
         This can be cached per (model, init_date) because it does not depend on ptloc.
         """
         key = (self.forecast, self.model_init_date)
-        if key in load_datasets._cached_vector_mean:
-            return load_datasets._cached_vector_mean[key]
+        if key in LoadDatasets._cached_vector_mean:
+            return LoadDatasets._cached_vector_mean[key]
 
         if ds is None:
             ds = self.ds_full
@@ -311,7 +311,7 @@ class LoadDatasets:
         # slice first 7 days (0..24*7), compute mean across forecast_hour & ensemble
         ds_small = ds.sel(forecast_hour=slice(0, 24 * 7)).astype('float64')
         ensemble_mean = ds_small.mean(dim=['forecast_hour', 'ensemble']).astype('float32')
-        load_datasets._cached_vector_mean[key] = ensemble_mean
+        LoadDatasets._cached_vector_mean[key] = ensemble_mean
         return ensemble_mean
 
     def calc_ivt_probability_and_duration_for_points(self, ds: Optional[xr.Dataset] = None) -> xr.Dataset:
