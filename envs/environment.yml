@@ -1,8 +1,8 @@
-name: landfall_tools_env      
+name: landfall_tools_env
 channels:
   - conda-forge
 dependencies:
-  - python
+  - python=3.10
   - numpy
   - pandas
   - xarray
@@ -14,3 +14,7 @@ dependencies:
   - cartopy
   - cmocean
   - pillow
+  - netcdf4
+  - h5netcdf       # optional, alternative NetCDF backend
+  - cfgrib         # optional, only if you need GRIB support
+  - eccodes        # required by cfgrib

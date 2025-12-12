@@ -14,7 +14,7 @@ import sys
 from datetime import datetime
 import traceback
 
-from cw3e_tools import LoadDatasets
+from cw3e_tools import LoadDatasets, extract_points_from_intermediate_zarr
 from ar_landfall_tool_contour import landfall_tool_contour
 from ar_landfall_tool_vector import landfall_tool_vector
 from ar_landfall_tool_IVT_mag import landfall_tool_IVT_magnitude
@@ -139,7 +139,7 @@ if model in ("ECMWF", "GEFS"):
 # then for each ptloc just extract and save a small netcdf
 print("Extracting ptlocs to save as intermediate data...")
 for loc, ptloc in zip(locs, ptlocs):
-    loader.extract_points_from_intermediate_zarr(
+    extract_points_from_intermediate_zarr(
         zarr_path=zarr_path,
         loc=loc,
         ptloc=ptloc,
