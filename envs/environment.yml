@@ -1,0 +1,16 @@
+name: landfall_tools_env      
+channels:
+  - conda-forge
+dependencies:
+  - python
+  - numpy
+  - pandas
+  - xarray
+  - dask
+  - distributed
+  - zarr
+  - numcodecs
+  - matplotlib
+  - cartopy
+  - cmocean
+  - pillow
