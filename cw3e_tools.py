@@ -231,14 +231,6 @@ class load_datasets:
                 ds.coords[coord] = ds.coords[coord].astype('float16')
         ds = ds.assign_coords(lon=((ds.lon + 180) % 360 - 180)).sortby('lon')
         
-        ## subset data based on loc
-        if self.loc == 'US-west':
-            ds = ds.sel(lon=slice(-145., -105), lat=slice(25, 60))
-        elif self.loc == 'SAK':
-            ds = ds.sel(lon=slice(-166., -129), lat=slice(53, 63))
-        elif self.loc == 'AK':
-            ds = ds.sel(lon=slice(-170., -155), lat=slice(54, 71))
-        
         ## updates specific to model name
         if self.forecast == 'ECMWF':
             ds = ds.rename({'forecast_time': 'forecast_hour'})
@@ -249,13 +241,13 @@ class load_datasets:
         elif self.forecast == 'W-WRF':
             ds = ds.rename({'ensembles': 'ensemble'})
 
-        executor = concurrent.futures.ThreadPoolExecutor()
-        future = executor.submit(background_ivt_calculation, ds)
-
         self.get_lat_lons_from_txt_file()
         x = xr.DataArray(self.lons, dims=['location'])
         y = xr.DataArray(self.lats, dims=['location'])
         ds = ds.sel(lon=x, lat=y, method='nearest')
+        
+        executor = concurrent.futures.ThreadPoolExecutor()
+        future = executor.submit(background_ivt_calculation, ds)
 
         ## Calculate probability and duration IVT >= threshold
         thresholds = [100, 150, 250, 500, 750, 1000]
