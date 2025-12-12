@@ -174,7 +174,7 @@ class load_datasets:
         if self.forecast == 'GEFS':
             try:
                 ## this method directly opens data from NOMADS
-                print(dt_init)
+                print(self.model_init_date)
                 dt_init = datetime.strptime(self.model_init_date, "%Y%m%d%H")
                 date = dt_init.strftime('%Y%m%d') # model init date
                 hr = dt_init.strftime('%H') # model init hour
