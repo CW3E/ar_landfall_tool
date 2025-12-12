@@ -79,6 +79,8 @@ class landfall_tool_contour:
         self.lats = ds_pt.lat.values
         self.threshold = threshold
         self.orientation = orientation
+        print("Requested threshold:", self.threshold, type(self.threshold))
+        print("Available thresholds:", ds_pt.threshold.values)
         self.probability = ds_pt.sel(threshold=self.threshold).probability
         self.forecast = forecast
 
