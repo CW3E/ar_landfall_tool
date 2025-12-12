@@ -21,6 +21,7 @@ from matplotlib import font_manager as fm
 import matplotlib.pyplot as plt
 import concurrent.futures
 from concurrent.futures import ThreadPoolExecutor
+from typing import Tuple, Optional, List
 
 ivt_colors = {'250': (255./255.0, 174./255.0, 0./255.0), # orange
               '500': (236./255.0, 0./255.0, 7./255.0), # red
@@ -98,218 +99,303 @@ def get_every_other_vector(x):
 def myround(x, base=5):
     return base * round(x/base)
 
-class load_datasets:
-    '''
-    Copies or downloads the latest 7-d QPF for the current model initialization time
-    Loads 7-d QPF
-    Loads and calculates IVT vars for plotting
+class LoadDatasets:
+    """
+    Refactored loader that caches on a per-(forecast, init_date) basis to avoid
+    repeatedly opening and preprocessing large .nc files.
 
-    Parameters
-    ----------
-    forecast : str
-        name of the forecast product
-        this can be 'ECMWF', 'GFS', 'WWRF'
-    loc : str
-        name of the location for the .txt file with latitude and longitude of locations for analysis
-        this can be 'US-west', 'AK', or 'SAK'
-    ptloc : str
-        name of the transect of .txt file with latitude and longitude of locations for analysis
-        this file should have no header, with latitude, then longitude, separated by a space
-        this can be 'coast', 'foothills', or 'inland'
+    Usage:
+        loader = load_datasets('ECMWF', 'US-west', 'coast', '2025121100')
+        ds_pt, ds_full = loader.calc_ivt_vars()
 
-    Returns
-    -------
-    grb : grb file
-        grb file downloaded for current run of figures
+    Public methods:
+        - calc_ivt_vars() -> (ds_pt, ds_full)
+        - load_prec_QPF_dataset() -> precipitation dataset (cached)
+    """
 
-    '''
-    def __init__(self, model, loc, ptloc, init_date):
-        self.path_to_out = '/data/projects/operations/LandfallTools/ar_landfall_tool/data/'
+    # Class-level caches (shared across instances)
+    _cached_ds_model = {}         # key: (forecast, init_date) -> preprocessed full ds
+    _cached_vector_mean = {}      # key: (forecast, init_date) -> precomputed ensemble mean vector ds (optional)
+    _cached_prec = {}             # key: (forecast, init_date, forecast) -> prec dataset
+
+    def __init__(self, model: str, loc: str, ptloc: str, init_date: str):
         self.forecast = model
-        self.model_init_date = init_date
-        self.ptloc = ptloc
         self.loc = loc
-        
+        self.ptloc = ptloc
+        self.model_init_date = init_date  # format "YYYYmmddHH"
+
+        # paths and model-specific settings
+        self._setup_paths_and_settings()
+
+        # ensure the (big) dataset is loaded and preprocessed once
+        key = (self.forecast, self.model_init_date)
+        if key not in load_datasets._cached_ds_model:
+            load_datasets._cached_ds_model[key] = self.read_ivt_data()
+        self.ds_full: xr.Dataset = load_datasets._cached_ds_model[key]
+
+    # --------------------------
+    # Internal helpers
+    # --------------------------
+    def _setup_paths_and_settings(self):
+        """Set file paths and model-specific attributes."""
+        self.path_to_out = '/data/projects/operations/LandfallTools/ar_landfall_tool/data/'
+
         if self.forecast == 'GEFS':
             self.fpath = '/data/projects/derived_products/GEFS_IVT/data/'
-            self.fname = f'{self.fpath}GEFS_IVT_{self.model_init_date}.nc'
+            self.fname = os.path.join(self.fpath, f'GEFS_IVT_{self.model_init_date}.nc')
             self.ensemble_name = 'GEFS'
-            self.datasize_min = 15.
-            
-            
-        elif self.forecast == 'ECMWF' or self.forecast == 'ECMWF-GEFS':
+            self.datasize_min = 15.0
+
+        elif self.forecast in ('ECMWF', 'ECMWF-GEFS'):
             self.fpath = '/data/projects/derived_products/ECMWF_IVT/Ensemble/'
-            self.fname = f'{self.fpath}IVT_EC_{self.model_init_date}.nc'
+            self.fname = os.path.join(self.fpath, f'IVT_EC_{self.model_init_date}.nc')
             self.ensemble_name = 'ECMWF'
-            self.datasize_min = 25.
-            
+            self.datasize_min = 25.0
+
         elif self.forecast == 'W-WRF':
             self.fpath = '/data/downloaded/WWRF-NRT/2025-2026/Ensemble_IVT/'
-            self.fname = f'{self.fpath}IVT_WWRF_{self.model_init_date}.nc'
+            self.fname = os.path.join(self.fpath, f'IVT_WWRF_{self.model_init_date}.nc')
             self.ensemble_name = 'West-WRF'
-            self.datasize_min = 50.
+            self.datasize_min = 50.0
+
         else:
-            print('Forecast product not available! Please choose either GEFS, ECMWF, ECMWF-GEFS, or W-WRF.')
+            raise ValueError("Forecast product not available! Choose GEFS, ECMWF, ECMWF-GEFS, or W-WRF.")
+
+    # --------------------------
+    # Dataset IO & preprocessing
+    # --------------------------
+    def read_ivt_data(self) -> xr.Dataset:
+        """
+        Open and preprocess the IVT dataset once per (model, init_date).
+        Operations include: open, cast coords, normalize lon to -180..180,
+        rename dims/coords to a consistent set, and any model-specific fixes.
+        """
+        print(f"Opening and preprocessing IVT dataset for {self.forecast} {self.model_init_date}: {self.fname}")
+
+        # try opening the dataset
+        try:
+            ds = xr.open_dataset(self.fname)
+        except Exception as e:
+            # raise a helpful error so upstream code can handle missing files
+            raise OSError(f"Unable to open IVT file {self.fname}: {e}")
+
+        # cast data to smaller dtypes where appropriate
+        # keep float16 for coords if possible to reduce memory (consistent with your earlier approach)
+        ds = ds.astype('float16', errors='ignore')
+
+        for coord in ds.coords:
+            if np.issubdtype(ds.coords[coord].dtype, np.floating):
+                try:
+                    ds.coords[coord] = ds.coords[coord].astype('float16')
+                except Exception:
+                    # if cast fails, keep original
+                    pass
+
+        # normalize longitudes to [-180, 180)
+        if 'lon' in ds.coords or 'longitude' in ds.coords:
+            # prefer 'lon' coordinate name but support both
+            lon_name = 'lon' if 'lon' in ds.coords else 'longitude'
+            ds = ds.assign_coords({lon_name: ((ds[lon_name] + 180) % 360 - 180)}).sortby(lon_name)
+            # if needed, rename to 'lon'/'lat' canonical names
+            if 'longitude' in ds.coords and 'lon' not in ds.coords:
+                ds = ds.rename({'longitude': 'lon'})
+            if 'latitude' in ds.coords and 'lat' not in ds.coords:
+                ds = ds.rename({'latitude': 'lat'})
+
+        # Model-specific adjustments
+        if self.forecast == 'ECMWF':
+            if 'forecast_time' in ds:
+                ds = ds.rename({'forecast_time': 'forecast_hour'})
+            # historic: for years > 2020 forecast_hour was stored differently
+            try:
+                dt_init = datetime.datetime.strptime(self.model_init_date, "%Y%m%d%H")
+                if int(dt_init.strftime('%Y')) > 2020 and 'forecast_hour' in ds:
+                    ds['forecast_hour'] = ds['forecast_hour'] * 3
+            except Exception:
+                pass
+
+        if self.forecast == 'W-WRF':
+            if 'ensembles' in ds:
+                ds = ds.rename({'ensembles': 'ensemble'})
+
+        # Guarantee standard coordinate names: forecast_hour, ensemble, location, lat, lon
+        # (if certain names don't exist downstream code should handle gracefully)
+        return ds
 
     def download_QPF_dataset(self):
+        """
+        Keep your original QPF download/copy logic here.
+        This function remains available for load_prec_QPF_dataset fallback usage.
+        """
         dt_init = datetime.datetime.strptime(self.model_init_date, "%Y%m%d%H")
-        date = dt_init.strftime('%Y%m%d') # model init date
-        hr = dt_init.strftime('%H') # model init hour
+        date = dt_init.strftime('%Y%m%d')  # model init date
+        hr = dt_init.strftime('%H')  # model init hour
 
         if self.forecast == 'GEFS':
-            ## download from NOMADS
             print(date, hr)
-            subprocess.check_call(["download_QPF.sh", date, hr], shell=True) # downloads the latest QPF data
+            # shell=True kept for legacy usage in original code; consider removing for safety later
+            subprocess.check_call(["download_QPF.sh", date, hr], shell=True)
         else:
-            mmdyhr_init = dt_init.strftime('%m%d%H') # month-day-hr init date
+            mmdyhr_init = dt_init.strftime('%m%d%H')
             date2 = dt_init + datetime.timedelta(days=7)
-            date2 = date2.strftime('%m%d%H') # valid date
-            fpath = '/data/downloaded/Forecasts/ECMWF/NRT_data/{0}{1}/'.format(date, hr)
-            fname = 'S1D{0}00{1}001'.format(mmdyhr_init, date2)
-            shutil.copy(fpath+fname, self.path_to_out+'precip_ECMWF') # copy file over to data folder
+            date2 = date2.strftime('%m%d%H')
+            fpath = f'/data/downloaded/Forecasts/ECMWF/NRT_data/{date}{hr}/'
+            fname = f'S1D{mmdyhr_init}00{date2}001'
+            shutil.copy(fpath + fname, os.path.join(self.path_to_out, 'precip_ECMWF'))
 
+    def load_prec_QPF_dataset(self) -> xr.Dataset:
+        """
+        Load precipitation (QPF) dataset. Cached per (forecast, init_date).
+        """
+        key = (self.forecast, self.model_init_date)
+        if key in load_datasets._cached_prec:
+            return load_datasets._cached_prec[key]
 
-    def load_prec_QPF_dataset(self):
-
+        # GEFS path: try remote open first, then local fallback
         if self.forecast == 'GEFS':
             try:
-                ## this method directly opens data from NOMADS
-                print(self.model_init_date)
                 dt_init = datetime.datetime.strptime(self.model_init_date, "%Y%m%d%H")
-                date = dt_init.strftime('%Y%m%d') # model init date
-                hr = dt_init.strftime('%H') # model init hour
-                url = 'https://nomads.ncep.noaa.gov/dods/gfs_0p25/gfs{0}/gfs_0p25_{1}z'.format(date, hr)
+                date = dt_init.strftime('%Y%m%d')
+                hr = dt_init.strftime('%H')
+                url = f'https://nomads.ncep.noaa.gov/dods/gfs_0p25/gfs{date}/gfs_0p25_{hr}z'
                 ds = xr.open_dataset(url, decode_times=False)
-                ds = ds.isel(time=7*8) # get 7-day QPF - the variable is already cumulative
-                prec = ds['apcpsfc']/25.4 # convert from mm to inches
+                ds = ds.isel(time=7 * 8)  # 7-day QPF
+                prec = ds['apcpsfc'] / 25.4  # mm -> inches
             except OSError:
                 try:
-                    ## This method uses the downloaded data
                     self.download_QPF_dataset()
                     ds = xr.open_dataset('precip_GFS.grb', engine='cfgrib', backend_kwargs={"indexpath": ""})
                     ds = ds.rename({'longitude': 'lon', 'latitude': 'lat'})
-                    prec = ds['tp']/25.4 # convert from mm to inches
-                except OSError:
-                    ## build a fake precip dataset of 0s
-                    lats = np.arange(-90., 90.25, .25)
-                    lons = np.arange(-180., 180.25, .25)
+                    prec = ds['tp'] / 25.4
+                except Exception:
+                    # fallback: zeros grid
+                    lats = np.arange(-90., 90.25, 0.25)
+                    lons = np.arange(-180., 180.25, 0.25)
                     var_dict = {'tp': (['lat', 'lon'], np.zeros((len(lats), len(lons))))}
-                    prec = xr.Dataset(var_dict, coords={'lat': (['lat'], lats),
-                                                        'lon': (['lon'], lons)})
-
+                    prec = xr.Dataset(var_dict, coords={'lat': (['lat'], lats), 'lon': (['lon'], lons)})
         else:
+            # ECMWF/WWRF path (unchanged logic, but cached)
             self.download_QPF_dataset()
-            var_lst = ['u10','lsm','msl','d2m','z','t2m','stl1', 'stl2', 'stl3', 'stl4', 'swvl4','swvl2', 'swvl3','sst','sp','v10','sd','skt', 'swvl1','siconc','tcwv','tcw']
-            ds = xr.open_dataset(self.path_to_out+'precip_ECMWF', drop_variables=var_lst, engine='cfgrib', backend_kwargs={'filter_by_keys': {'typeOfLevel': 'surface'}})
-            prec = ds['tp']*39.3701 # convert from m to inches
-            prec = prec.rename({'longitude': 'lon', 'latitude': 'lat'}) # need to rename this to match GEFS
+            var_lst = ['u10', 'lsm', 'msl', 'd2m', 'z', 't2m', 'stl1', 'stl2', 'stl3', 'stl4',
+                       'swvl4', 'swvl2', 'swvl3', 'sst', 'sp', 'v10', 'sd', 'skt', 'swvl1',
+                       'siconc', 'tcwv', 'tcw']
+            ds = xr.open_dataset(
+                os.path.join(self.path_to_out, 'precip_ECMWF'),
+                drop_variables=var_lst,
+                engine='cfgrib',
+                backend_kwargs={'filter_by_keys': {'typeOfLevel': 'surface'}}
+            )
+            prec = ds['tp'] * 39.3701  # meters -> inches
+            prec = prec.rename({'longitude': 'lon', 'latitude': 'lat'})
 
+        load_datasets._cached_prec[key] = prec
         return prec
 
-    def get_lat_lons_from_txt_file(self):
-        ## read text file with points
-        textpts_fname = self.path_to_out+'{0}/latlon_{1}.txt'.format(self.loc, self.ptloc)
+    # --------------------------
+    # Lat/lon point handling
+    # --------------------------
+    def get_lat_lons_from_txt_file(self) -> None:
+        """
+        Read lat/lon list for this object's loc and ptloc.
+        Writes self.lons and self.lats arrays.
+        """
+        textpts_fname = os.path.join(self.path_to_out, f'{self.loc}/latlon_{self.ptloc}.txt')
         df = pd.read_csv(textpts_fname, header=None, sep=' ', names=['latitude', 'longitude'], engine='python')
-        df['longitude'] = df['longitude']*-1
-        df = df
+        df['longitude'] = df['longitude'] * -1
         self.lons = df['longitude'].values
         self.lats = df['latitude'].values
 
-    def calc_ivt_vars(self):
+    # --------------------------
+    # IVT computations
+    # --------------------------
+    def calc_ivt_mean_for_vector_plots(self, ds: Optional[xr.Dataset] = None) -> xr.Dataset:
+        """
+        Compute ensemble-mean uIVT/vIVT/IVT mean needed for vector plots for the first 7 days.
+        This can be cached per (model, init_date) because it does not depend on ptloc.
+        """
+        key = (self.forecast, self.model_init_date)
+        if key in load_datasets._cached_vector_mean:
+            return load_datasets._cached_vector_mean[key]
 
-        def background_ivt_calculation(ds):
-            ds1 = ds.sel(forecast_hour=slice(0, 24*7)).astype('float64').mean(['forecast_hour', 'ensemble'])
-            ds1 = ds1.astype('float32')
-            ds1 = ds1.where(ds1.IVT >= 250)
-            return ds1
+        if ds is None:
+            ds = self.ds_full
 
-        # Load and preprocess dataset
-        print('Reading IVT data ...')
-        ds = xr.open_dataset(self.fname)
-        ds = ds.astype('float16')
-        for coord in ds.coords:
-            if np.issubdtype(ds.coords[coord].dtype, np.floating):
-                ds.coords[coord] = ds.coords[coord].astype('float16')
-        ds = ds.assign_coords(lon=((ds.lon + 180) % 360 - 180)).sortby('lon')
-        
-        ## updates specific to model name
-        if self.forecast == 'ECMWF':
-            ds = ds.rename({'forecast_time': 'forecast_hour'})
-            dt_init = datetime.datetime.strptime(self.model_init_date, "%Y%m%d%H")
-            if int(dt_init.strftime('%Y')) > 2020:
-                ds['forecast_hour'] = ds.forecast_hour * 3
-            
-        elif self.forecast == 'W-WRF':
-            ds = ds.rename({'ensembles': 'ensemble'})
+        # slice first 7 days (0..24*7), compute mean across forecast_hour & ensemble
+        ds_small = ds.sel(forecast_hour=slice(0, 24 * 7)).astype('float64')
+        ensemble_mean = ds_small.mean(dim=['forecast_hour', 'ensemble']).astype('float32')
+        load_datasets._cached_vector_mean[key] = ensemble_mean
+        return ensemble_mean
 
+    def calc_ivt_probability_and_duration_for_points(self, ds: Optional[xr.Dataset] = None) -> xr.Dataset:
+        """
+        Subset ds to locations defined by self.loc/self.ptloc and compute:
+          - probability of IVT >= thresholds (ensemble fraction)
+          - duration of IVT >= thresholds (hours)
+          - ensemble_mean, control, u, v (normalized)
+        Returns a merged dataset containing:
+          ensemble_mean, control, v, u, duration (threshold dim), probability (threshold dim)
+        """
+        if ds is None:
+            ds = self.ds_full
+
+        # make sure ds has forecast_hour and ensemble dims
+        if 'forecast_hour' not in ds.dims and 'forecast_hour' not in ds.coords:
+            raise KeyError("Dataset lacks 'forecast_hour' coordinate required for duration/probability calculations")
+
+        # Subset to points
         self.get_lat_lons_from_txt_file()
         x = xr.DataArray(self.lons, dims=['location'])
         y = xr.DataArray(self.lats, dims=['location'])
-        ds = ds.sel(lon=x, lat=y, method='nearest')
-        
-        executor = concurrent.futures.ThreadPoolExecutor()
-        future = executor.submit(background_ivt_calculation, ds)
+        ds_pts = ds.sel(lon=x, lat=y, method='nearest')
 
-        ## Calculate probability and duration IVT >= threshold
+        # Precompute commonly used things
         thresholds = [100, 150, 250, 500, 750, 1000]
-        # Precompute data_size and valid_mask once
-        ivt = ds.IVT  # shape: (forecast_hour, ensemble, location)
-        ens_size = ivt.sizes['ensemble']
+        ivt = ds_pts['IVT']  # dims: (forecast_hour, ensemble, location)
+        ens_size = ivt.sizes.get('ensemble', None)
+        if ens_size is None:
+            raise KeyError("IVT array must have an 'ensemble' dimension.")
 
-        data_size = ivt.count(dim='ensemble')  # (forecast_hour, location)
+        # Number of non-missing ensemble members at each (forecast_hour, location)
+        data_size = ivt.count(dim='ensemble')  # shape: (forecast_hour, location)
         valid_mask = data_size >= self.datasize_min
 
-        # Prepare result lists
-        probability_lst = []
-        duration_lst = []
+        prob_list = []
+        dur_list = []
 
-        def process_threshold(thres):
-            mask = ivt >= thres
+        for thres in thresholds:
+            mask = ivt >= thres  # boolean (forecast_hour, ensemble, location)
+            # probability = fraction of ensembles >= thres, but only where valid_mask is True
+            pct_ens = (mask.sum(dim='ensemble') / ens_size).where(valid_mask)
+            # duration: count hours with IVT >= thres across forecast_hour -> multiply by 3 (assuming 3-hourly timesteps)
+            # (original code multiplied by 3)
+            hours = (mask.sum(dim='forecast_hour') * 3).where(valid_mask)
+            prob_list.append(pct_ens)
+            dur_list.append(hours)
 
-            count_ens = mask.sum(dim='ensemble') / ens_size
-            count_ens = count_ens.where(valid_mask)
+        # concat across thresholds into a threshold dimension
+        duration_ds = xr.concat(dur_list, pd.Index(thresholds, name='threshold')).astype('float32')
+        prob_ds = xr.concat(prob_list, pd.Index(thresholds, name='threshold')).astype('float32')
+        
+        del mask, count_ens, count_time  # inside loop if needed
 
-            count_time = mask.sum(dim='forecast_hour') * 3
-            count_time = count_time.where(valid_mask)
+        # Compute ensemble mean vectors (uvec, vvec) and ensemble_mean IVT using ensemble axis,
+        # but only where there is enough ensemble data (valid_mask)
+        print("Computing ensemble means and normalized vectors...")
+        uvec = ds_pts['uIVT'].astype('float64').where(data_size >= self.datasize_min).mean(dim='ensemble').astype('float32')
+        vvec = ds_pts['vIVT'].astype('float64').where(data_size >= self.datasize_min).mean(dim='ensemble').astype('float32')
+        ensemble_mean = ds_pts['IVT'].astype('float64').where(data_size >= self.datasize_min).mean(dim='ensemble').astype('float32')
+        
+        del ivt, data_size, valid_mask
 
-            return count_ens, count_time
+        # normalize vectors by ensemble mean (avoid divide-by-zero)
+        with np.errstate(divide='ignore', invalid='ignore'):
+            u = (uvec / ensemble_mean).where(~np.isclose(ensemble_mean, 0))
+            v = (vvec / ensemble_mean).where(~np.isclose(ensemble_mean, 0))
 
-        with ThreadPoolExecutor() as executor:
-            results = list(executor.map(process_threshold, thresholds))
+        # control = ensemble member index 0 (as in original code)
+        control = ds_pts['IVT'].sel(ensemble=0)
 
-        probability_lst, duration_lst = zip(*results)
-
-        # merge duration and probability datasets
-        duration_ds = xr.concat(duration_lst, pd.Index(thresholds, name="threshold"))
-        prob_ds = xr.concat(probability_lst, pd.Index(thresholds, name="threshold"))
-
-        ## Calculate Vectors
-        print('Computing ensemble mean...')
-        # get the ensemble mean vIVT and uIVT
-        uvec = (
-            ds.uIVT.astype('float64')
-            .where(data_size >= self.datasize_min)
-            .mean(dim='ensemble')
-        )
-        vvec = (
-            ds.vIVT.astype('float64')
-            .where(data_size >= self.datasize_min)
-            .mean(dim='ensemble')
-        )
-        # get the ensemble mean IVT where there are enough ensembles
-        ensemble_mean = (
-            ds.IVT.astype('float64')
-            .where(data_size >= self.datasize_min)
-            .mean(dim='ensemble')
-        )
-
-        # normalize vectors
-        u = uvec / ensemble_mean
-        v = vvec / ensemble_mean
-
-        control = ds.IVT.sel(ensemble=0)
-
-        ## place into single dataset
+        # build named DataArrays and merge
         x1 = ensemble_mean.rename('ensemble_mean')
         x2 = control.rename('control')
         x3 = v.rename('v')
@@ -317,10 +403,25 @@ class load_datasets:
         x5 = duration_ds.rename('duration')
         x6 = prob_ds.rename('probability')
 
-        x_lst = [x1, x2, x3, x4, x5, x6]
-        final_ds = xr.merge(x_lst)
-
-        ##Add attribute information
+        final_ds = xr.merge([x1, x2, x3, x4, x5, x6])
         final_ds = final_ds.assign_attrs(model_init_date=self.model_init_date)
-        ds1 = future.result()
-        return final_ds, ds1
+        
+        del uvec, vvec, ensemble_mean, control
+        del x1, x2, x3, x4, x5, x6
+        
+        return final_ds
+
+    # --------------------------
+    # Public combined method
+    # --------------------------
+    def calc_ivt_vars(self) -> Tuple[xr.Dataset, xr.Dataset]:
+        """
+        Primary entrypoint used by the rest of your workflow.
+        Returns:
+            (ds_pt, ds_full)
+        where ds_pt is the point-subset dataset with ensemble_mean/control/v/u/probability/duration,
+        and ds_full is the (cached) preprocessed full IVT dataset useful for e.g. vector plots
+        that require full-field differencing across models (ECMWF-GEFS workflow).
+        """
+        ds_pt = self.calc_ivt_probability_and_duration_for_points(self.ds_full)
+        return ds_pt, self.ds_full
