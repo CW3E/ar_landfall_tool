@@ -555,9 +555,3 @@ class LoadDatasets:
             ds_pt.to_netcdf(out_nc_path)
 
         return ds_pt
-    
-    def release_ivt_dataset(self):
-        if self._ivt_ds is not None:
-            del self._ivt_ds
-            self._ivt_ds = None
-
