@@ -363,8 +363,6 @@ class LoadDatasets:
         # concat across thresholds into a threshold dimension
         duration_ds = xr.concat(dur_list, pd.Index(thresholds, name='threshold')).astype('float32')
         prob_ds = xr.concat(prob_list, pd.Index(thresholds, name='threshold')).astype('float32')
-        
-        del mask, count_ens, count_time  # inside loop if needed
 
         # Compute ensemble mean vectors (uvec, vvec) and ensemble_mean IVT using ensemble axis,
         # but only where there is enough ensemble data (valid_mask)

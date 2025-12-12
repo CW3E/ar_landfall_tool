@@ -61,6 +61,10 @@ MODEL_CONFIG = {
 def plot_magnitudes(ds_pt, loc, ptloc, model, orientation):
     """Plot control and ensemble mean magnitude figures."""
     for mag_type in ["control", "ensemble_mean"]:
+        print("\n--------------------------------------------")
+        print(f" Magnitude | {mag_type}")
+        print("--------------------------------------------")
+        print("Elapsed:", datetime.now() - startTime)
         fig = landfall_tool_IVT_magnitude(
             ds_pt=ds_pt,
             loc=loc,
@@ -140,6 +144,10 @@ for i, (loc, ori, ptloc) in enumerate(zip(locs, oris, ptlocs)):
         # Compute point-based probabilities
         # Using the SAME ds_ivt loaded once above
         # -----------------------------------------
+        print("\n--------------------------------------------")
+        print(f" Computing point-based probabilities")
+        print("--------------------------------------------")
+        print("Elapsed:", datetime.now() - startTime)
         ds_pt = loader.calc_ivt_probability_and_duration_for_points(ds_ivt)
 
         # Save or plot results
@@ -152,6 +160,10 @@ for i, (loc, ori, ptloc) in enumerate(zip(locs, oris, ptlocs)):
         # Contour + Vector Plots for thresholds
         # -----------------------------------------
         for thres in threshold_list(ptloc):
+            print("\n--------------------------------------------")
+            print(f" Contour | {thres}")
+            print("--------------------------------------------")
+            print("Elapsed:", datetime.now() - startTime)
 
             # Contour plot
             contour = landfall_tool_contour(
@@ -160,7 +172,12 @@ for i, (loc, ori, ptloc) in enumerate(zip(locs, oris, ptlocs)):
                 orientation=ori
             )
             contour.create_figure()
-
+            
+            
+            print("\n--------------------------------------------")
+            print(f" Vector | {thres}")
+            print("--------------------------------------------")
+            print("Elapsed:", datetime.now() - startTime)
             # Vector plot (only for ECMWF/GEFS)
             if model in ("ECMWF", "GEFS"):
                 vector = landfall_tool_vector(
