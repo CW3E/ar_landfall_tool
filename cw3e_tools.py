@@ -179,18 +179,6 @@ class LoadDatasets:
             # raise a helpful error so upstream code can handle missing files
             raise OSError(f"Unable to open IVT file {self.fname}: {e}")
 
-        # cast data to smaller dtypes where appropriate
-        # keep float16 for coords if possible to reduce memory (consistent with your earlier approach)
-        ds = ds.astype('float16', errors='ignore')
-
-        for coord in ds.coords:
-            if np.issubdtype(ds.coords[coord].dtype, np.floating):
-                try:
-                    ds.coords[coord] = ds.coords[coord].astype('float16')
-                except Exception:
-                    # if cast fails, keep original
-                    pass
-
         # normalize longitudes to [-180, 180)
         if 'lon' in ds.coords or 'longitude' in ds.coords:
             # prefer 'lon' coordinate name but support both
