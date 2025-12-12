@@ -488,8 +488,8 @@ class landfall_tool_vector:
     def create_figure(self):
         outpath = self.path_to_out+f'{self.loc}/'
         os.makedirs(outpath, exist_ok=True)
-        fname1 = outpath+f'{self.forecast}_LandfallTool_{self.threshold}_{self.ptloc}_current'
-        fname2 = outpath+f'{self.forecast}_LandfallTool_{self.threshold}_{self.ptloc}_{self.date_string}'
+        fname1 = outpath+f'{self.forecast}_LandfallTool_Vectors_{self.threshold}_{self.ptloc}_current'
+        fname2 = outpath+f'{self.forecast}_LandfallTool_Vectors_{self.threshold}_{self.ptloc}_{self.date_string}'
         fmt = 'png'
 
         ## set font
