@@ -152,7 +152,7 @@ class load_datasets:
             print('Forecast product not available! Please choose either GEFS, ECMWF, ECMWF-GEFS, or W-WRF.')
 
     def download_QPF_dataset(self):
-        dt_init = datetime.strptime(self.model_init_date, "%Y%m%d%H")
+        dt_init = datetime.datetime.strptime(self.model_init_date, "%Y%m%d%H")
         date = dt_init.strftime('%Y%m%d') # model init date
         hr = dt_init.strftime('%H') # model init hour
 
@@ -175,7 +175,7 @@ class load_datasets:
             try:
                 ## this method directly opens data from NOMADS
                 print(self.model_init_date)
-                dt_init = datetime.strptime(self.model_init_date, "%Y%m%d%H")
+                dt_init = datetime.datetime.strptime(self.model_init_date, "%Y%m%d%H")
                 date = dt_init.strftime('%Y%m%d') # model init date
                 hr = dt_init.strftime('%H') # model init hour
                 url = 'https://nomads.ncep.noaa.gov/dods/gfs_0p25/gfs{0}/gfs_0p25_{1}z'.format(date, hr)
@@ -235,7 +235,7 @@ class load_datasets:
         ## updates specific to model name
         if self.forecast == 'ECMWF':
             ds = ds.rename({'forecast_time': 'forecast_hour'})
-            dt_init = datetime.strptime(self.model_init_date, "%Y%m%d%H")
+            dt_init = datetime.datetime.strptime(self.model_init_date, "%Y%m%d%H")
             if int(dt_init.strftime('%Y')) > 2020:
                 ds['forecast_hour'] = ds.forecast_hour * 3
             
