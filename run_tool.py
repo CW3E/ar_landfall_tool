@@ -15,6 +15,7 @@ import xarray as xr
 from datetime import datetime
 import traceback
 
+from utils import clear_tmp_dir
 from cw3e_tools import LoadDatasets
 from ar_landfall_tool_contour import landfall_tool_contour
 from ar_landfall_tool_vector import landfall_tool_vector
@@ -108,6 +109,14 @@ startTime = datetime.now()
 print("\n===============================================")
 print(f" Running AR Landfall Tool for {model} {init_date}")
 print("===============================================\n")
+
+# ================================================================
+# 0. Remove tmp files
+# ================================================================
+print('Removing tmp intermediate data files...') 
+# Specify the directory and the pattern
+tmp_directory = "/data/projects/operations/LandfallTools/ar_landfall_tool/data/tmp/"
+clear_tmp_dir(tmp_directory)
 
 
 # ================================================================
@@ -220,6 +229,11 @@ for i, (loc, ori, ptloc) in enumerate(zip(locs, oris, ptlocs)):
 # ================================================================
 del ds_ivt_mean
 del ds_qpf
+
+print('Removing tmp intermediate data files...') 
+# Specify the directory and the pattern
+tmp_directory = "/data/projects/operations/LandfallTools/ar_landfall_tool/data/tmp/"
+clear_tmp_dir(tmp_directory)
 
 print("\n===============================================")
 print(" Workflow Complete")
