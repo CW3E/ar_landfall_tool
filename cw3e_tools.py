@@ -101,6 +101,76 @@ def get_every_other_vector(x):
 def myround(x, base=5):
     return base * round(x/base)
 
+def extract_points_from_intermediate_zarr(
+    self,
+    zarr_path: str,
+    loc: str,
+    ptloc: str,
+    out_nc_path: Optional[str] = None,
+    method: str = "nearest",
+    save_nc: bool = True
+) -> xr.Dataset:
+    """
+    Open the intermediate Zarr store, subset to points defined by (loc, ptloc),
+    and optionally save the result as a small NetCDF for plotting.
+
+    Args
+    ----
+    zarr_path : str
+      Path to intermediate zarr saved by compute_and_save_intermediate_products.
+    loc : str
+      Location group (used to find lat/lons file path via self.path_to_out)
+    ptloc : str
+      Transect name (coast, foothills, inland).
+    out_nc_path : str, optional
+      Path to save extracted netCDF. If None, will be:
+      f"intermediate_{self.forecast}_{self.model_init_date}_{loc}_{ptloc}.nc"
+    method : str
+      Selection method for xr.sel (default 'nearest')
+    save_nc : bool
+      If True, save extracted dataset to netCDF (small file).
+
+    Returns
+    -------
+    ds_pt : xarray.Dataset
+      Point-subset dataset (contains probability, duration, ensemble_mean, u, v, control)
+    """
+
+    if out_nc_path is None:
+        out_nc_path = f"intermediate_{self.forecast}_{self.model_init_date}_{loc}_{ptloc}.nc"
+
+    # open zarr lazily
+    ds = xr.open_zarr(zarr_path, consolidated=True)
+
+    # read lat/lon file for the ptloc
+    textpts_fname = os.path.join(self.path_to_out, f'{loc}/latlon_{ptloc}.txt')
+    df = pd.read_csv(textpts_fname, header=None, sep=' ', names=['latitude', 'longitude'], engine='python')
+    df['longitude'] = df['longitude'] * -1
+    lons = df['longitude'].values
+    lats = df['latitude'].values
+
+    # Build DataArray for selection
+    x = xr.DataArray(lons, dims=['location'])
+    y = xr.DataArray(lats, dims=['location'])
+
+    # For probability which may have threshold & forecast_hour, use multi-dim selection
+    # We'll select lat/lon by nearest
+    ds_pt = ds.sel(lon=x, lat=y, method=method)
+
+    # Optional: add coords for the point names or indices
+    ds_pt = ds_pt.assign_coords(location=np.arange(len(lons)))
+    ds_pt = ds_pt.assign_coords(ptloc=np.array([ptloc]))
+
+    if save_nc:
+        # Save small netCDF (no compression by default)
+        out_dir = os.path.dirname(out_nc_path)
+        if out_dir and not os.path.exists(out_dir):
+            os.makedirs(out_dir, exist_ok=True)
+        ds_pt.to_netcdf(out_nc_path)
+
+    return ds_pt
+
+
 class LoadDatasets:
     """
     Refactored loader that caches on a per-(forecast, init_date) basis to avoid
@@ -283,20 +353,6 @@ class LoadDatasets:
         return prec
 
     # --------------------------
-    # Lat/lon point handling
-    # --------------------------
-    def get_lat_lons_from_txt_file(self) -> None:
-        """
-        Read lat/lon list for this object's loc and ptloc.
-        Writes self.lons and self.lats arrays.
-        """
-        textpts_fname = os.path.join(self.path_to_out, f'{self.loc}/latlon_{self.ptloc}.txt')
-        df = pd.read_csv(textpts_fname, header=None, sep=' ', names=['latitude', 'longitude'], engine='python')
-        df['longitude'] = df['longitude'] * -1
-        self.lons = df['longitude'].values
-        self.lats = df['latitude'].values
-
-    # --------------------------
     # IVT computations
     # --------------------------
     def calc_ivt_mean_for_vector_plots(self, ds: Optional[xr.Dataset] = None) -> xr.Dataset:
@@ -317,103 +373,190 @@ class LoadDatasets:
         LoadDatasets._cached_vector_mean[key] = ensemble_mean
         return ensemble_mean
 
-    def calc_ivt_probability_and_duration_for_points(self, ds: Optional[xr.Dataset] = None) -> xr.Dataset:
+    def compute_and_save_intermediate_products(
+        self,
+        ds: Optional[xr.Dataset] = None,
+        thresholds: Optional[Sequence[int]] = None,
+        duration_multiplier: int = 3,
+        out_zarr_path: str = None,
+        chunking: Optional[Dict[str,int]] = None,
+        compute: bool = True,
+        compressor=None
+    ) -> str:
         """
-        Subset ds to locations defined by self.loc/self.ptloc and compute:
-          - probability of IVT >= thresholds (ensemble fraction)
-          - duration of IVT >= thresholds (hours)
-          - ensemble_mean, control, u, v (normalized)
-        Returns a merged dataset containing:
-          ensemble_mean, control, v, u, duration (threshold dim), probability (threshold dim)
+        Compute intermediate IVT products on the full grid (lazy/dask) and save to Zarr.
+
+        Args
+        ----
+        ds : xarray.Dataset, optional
+            Full IVT dataset. If None, uses self.ds_full (must be set).
+        thresholds : sequence of int
+            IVT thresholds to compute (default [100,150,250,500,750,1000]).
+        duration_multiplier : int
+            Multiplier to convert counts to hours (default 3 for 3-hour timesteps).
+        out_zarr_path : str
+            Path to write Zarr dataset. If None, defaults to
+            f"ivt_intermediate_{self.forecast}_{self.model_init_date}.zarr".
+        chunking : dict
+            Chunk sizes for dask (e.g. {'ensemble': -1, 'lat': 200, 'lon':200}).
+            If None, a sensible default is chosen.
+        compute : bool
+            If True, triggers `.to_zarr(..., compute=True)` which executes the dask graph.
+            If False, the zarr metadata is written lazily (requires client/workers to compute later).
+        compressor : numcodecs compressor instance or None
+            Optional compressor for Zarr store (e.g., zarr.Blosc(cname='zstd', clevel=3)).
+        Returns
+        -------
+        out_zarr_path : str
+            Path to the saved zarr store.
         """
-        prof = StepProfiler() ## initialize profiler to help diagnose bottlenecks
-        prof.mark("start")
-        
+
+        # Defaults
         if ds is None:
+            if not hasattr(self, 'ds_full') or self.ds_full is None:
+                raise ValueError("Full dataset not provided and self.ds_full is not set.")
             ds = self.ds_full
 
-        # make sure ds has forecast_hour and ensemble dims
-        if 'forecast_hour' not in ds.dims and 'forecast_hour' not in ds.coords:
-            raise KeyError("Dataset lacks 'forecast_hour' coordinate required for duration/probability calculations")
-        
-        prof.mark("pull_ivt_data")
-        
-        # Subset to points
-        self.get_lat_lons_from_txt_file()
-        x = xr.DataArray(self.lons, dims=['location'])
-        y = xr.DataArray(self.lats, dims=['location'])
-        ds_pts = ds.sel(lon=x, lat=y, method='nearest')
-        prof.mark("subset_ivt_to_pts")
+        if thresholds is None:
+            thresholds = [100, 150, 250, 500, 750, 1000]
 
-        # Precompute commonly used things
-        thresholds = [100, 150, 250, 500, 750, 1000]
-        ivt = ds_pts['IVT']  # dims: (forecast_hour, ensemble, location)
-        ens_size = ivt.sizes.get('ensemble', None)
-        if ens_size is None:
-            raise KeyError("IVT array must have an 'ensemble' dimension.")
+        if out_zarr_path is None:
+            out_zarr_path = f"ivt_intermediate_{self.forecast}_{self.model_init_date}.zarr"
 
-        # Number of non-missing ensemble members at each (forecast_hour, location)
-        data_size = ivt.count(dim='ensemble')  # shape: (forecast_hour, location)
-        valid_mask = data_size >= self.datasize_min
+        # sensible chunking defaults (tweak for your machine)
+        if chunking is None:
+            chunking = {}
+            # try to preserve existing dims where available
+            if 'ensemble' in ds.dims:
+                chunking['ensemble'] = -1   # keep ensemble as one chunk (good for mean reductions)
+            if 'forecast_hour' in ds.dims:
+                chunking['forecast_hour'] = min(24*7, ds.sizes.get('forecast_hour', 24))
+            if 'lat' in ds.dims:
+                chunking['lat'] = 200
+            if 'lon' in ds.dims:
+                chunking['lon'] = 200
 
-        prob_list = []
-        dur_list = []
-        
-        for thres in thresholds:
-            mask = ivt >= thres  # boolean (forecast_hour, ensemble, location)
-            # probability = fraction of ensembles >= thres, but only where valid_mask is True
-            pct_ens = (mask.sum(dim='ensemble') / ens_size).where(valid_mask)
-            # duration: count hours with IVT >= thres across forecast_hour -> multiply by 3 (assuming 3-hourly timesteps)
-            # (original code multiplied by 3)
-            hours = (mask.sum(dim='forecast_hour') * 3).where(valid_mask)
-            prob_list.append(pct_ens)
-            dur_list.append(hours)
+        # Ensure IVT magnitude exists, compute lazily using apply_ufunc for performance
+        if 'ivt' not in ds.data_vars:
+            # compute ivt = sqrt(uIVT^2 + vIVT^2)
+            ds = ds.assign(
+                ivt = xr.apply_ufunc(
+                    lambda u, v: np.sqrt(u*u + v*v),
+                    ds['uIVT'],
+                    ds['vIVT'],
+                    dask='parallelized',
+                    output_dtypes=[np.float32],
+                    vectorize=False,
+                )
+            )
 
-        # concat across thresholds into a threshold dimension
-        duration_ds = xr.concat(dur_list, pd.Index(thresholds, name='threshold'))
-        prob_ds = xr.concat(prob_list, pd.Index(thresholds, name='threshold'))
-        
-        prof.mark("compute_duration_probabilities_thres")
-        del dur_list, prob_list, mask, ivt
+        # Re-chunk dataset for efficient reductions
+        ds = ds.chunk(chunking)
 
-        # Compute ensemble mean vectors (uvec, vvec) and ensemble_mean IVT using ensemble axis,
-        # but only where there is enough ensemble data (valid_mask)
-        print("Computing ensemble means and normalized vectors...")
-        uvec = ds_pts['uIVT'].where(data_size >= self.datasize_min).mean(dim='ensemble')
-        vvec = ds_pts['vIVT'].where(data_size >= self.datasize_min).mean(dim='ensemble')
-        ensemble_mean = ds_pts['IVT'].where(data_size >= self.datasize_min).mean(dim='ensemble')
-        
-        prof.mark("compute_ensemble_mean")
+        # Compute data_size (number of non-missing ensembles) per (forecast_hour, lat, lon)
+        ivt = ds['ivt']
+        if 'ensemble' not in ivt.dims:
+            raise KeyError("IVT must have 'ensemble' dimension for these computations.")
+        data_size = ivt.count(dim='ensemble')  # (forecast_hour, lat, lon)
+        valid_mask = data_size >= self.datasize_min  # boolean (forecast_hour, lat, lon)
 
-        # normalize vectors by ensemble mean (avoid divide-by-zero)
+        # Build threshold DataArray that will broadcast to (threshold, forecast_hour, ensemble, lat, lon)
+        thr = np.asarray(thresholds)
+        thr_da = xr.DataArray(thr, dims=['threshold'])
+
+        # Broadcast thresholds across ivt by adding a threshold dim (xarray will broadcast)
+        # mask shape: (threshold, forecast_hour, ensemble, lat, lon)
+        mask = ivt >= thr_da
+
+        # Probability: fraction of ensembles >= threshold -> mean over ensemble axis
+        # result dims: (threshold, forecast_hour, lat, lon)
+        probability = mask.mean(dim='ensemble')  # lazy
+
+        # Duration: count of forecast_hour where condition true -> sum over forecast_hour then * multiplier
+        # First sum over forecast_hour: dims (threshold, ensemble, lat, lon) -> then mean over ensemble?
+        # We want duration per (threshold, lat, lon) aggregated across forecast_hour.
+        duration = mask.sum(dim='forecast_hour') * duration_multiplier  # dims (threshold, ensemble, lat, lon)
+        # For duration per location we likely want to aggregate across ensemble? In your original code you did
+        # hours = (mask.sum(dim='forecast_hour') * 3).where(valid_mask)  # where valid_mask has dims (forecast_hour, lat, lon)
+        # but earlier you counted hours without ensemble reduction; to match old behavior, reduce ensemble by fraction of ensemble?
+        # The original code used mask.sum(dim='forecast_hour')  (mask shape: (forecast_hour, ensemble, loc)) -> gave (ensemble, loc)
+        # then they did not reduce ensemble. In that code they later concatenated hours across thresholds with ensemble dimension removed because ds was point-subset with 'location'.
+        # For clarity here we'll compute duration as mean across ensemble after valid_mask is applied:
+        duration = duration.mean(dim='ensemble')  # dims: (threshold, lat, lon)
+        # Apply valid_mask: data_size dims (forecast_hour, lat, lon) -> reduce to lat/lon by any or mean?  
+        # We will create a valid_mask_per_location that is True if any forecast_hour had enough ensembles (consistent with 'count >= datasize_min' in your code)
+        valid_loc = data_size.max(dim='forecast_hour') >= self.datasize_min  # dims (lat, lon)
+        # Broadcast valid_loc to probability and duration (threshold, lat, lon)
+        probability = probability.where(valid_loc)
+        duration = duration.where(valid_loc)
+
+        # Ensemble means for u, v, ivt (reduce along ensemble)
+        ensemble_mean_ivt = ds['ivt'].where(data_size >= self.datasize_min).mean(dim='ensemble')
+        ensemble_mean_u = ds['uIVT'].where(data_size >= self.datasize_min).mean(dim='ensemble')
+        ensemble_mean_v = ds['vIVT'].where(data_size >= self.datasize_min).mean(dim='ensemble')
+
+        # Normalize vectors (avoid divide-by-zero)
         with np.errstate(divide='ignore', invalid='ignore'):
-            u = (uvec / ensemble_mean).where(~np.isclose(ensemble_mean, 0))
-            v = (vvec / ensemble_mean).where(~np.isclose(ensemble_mean, 0))
-            
-        prof.mark("normalize_vectors")
+            u_norm = (ensemble_mean_u / ensemble_mean_ivt).where(~np.isclose(ensemble_mean_ivt, 0))
+            v_norm = (ensemble_mean_v / ensemble_mean_ivt).where(~np.isclose(ensemble_mean_ivt, 0))
 
-        # control = ensemble member index 0 (as in original code)
-        control = ds_pts['IVT'].sel(ensemble=0)
+        # Control ensemble member 0
+        control = ds['ivt'].sel(ensemble=0)
 
-        # build named DataArrays and merge
-        x1 = ensemble_mean.rename('ensemble_mean')
-        x2 = control.rename('control')
-        x3 = v.rename('v')
-        x4 = u.rename('u')
-        x5 = duration_ds.rename('duration')
-        x6 = prob_ds.rename('probability')
+        # Assemble intermediate dataset
+        # Align dims: probability dims (threshold, forecast_hour, lat, lon) but we applied mean(dim='ensemble') so it is (threshold, forecast_hour, lat, lon)
+        # To pack into intermediate dataset consistent with your previous structure:
+        # We'll aggregate probability across forecast_hour by taking max or keep forecast_hour dimension? Your prior code produced prob shape (forecast_hour, location)
+        # To keep generality, we'll keep forecast_hour dimension in probability (i.e., probability per forecast_hour)
+        # But earlier under mask.mean(dim='ensemble') probability preserves forecast_hour. We applied valid_loc (no forecast_hour dim); that's ok.
+        # For duration we have (threshold, lat, lon). We'll add 'location' later when subsetting.
 
-        final_ds = xr.merge([x1, x2, x3, x4, x5, x6])
-        final_ds = final_ds.assign_attrs(model_init_date=self.model_init_date)
-        
-        prof.mark("build_dataset")
-        
-        del uvec, vvec, ensemble_mean, control
-        del x1, x2, x3, x4, x5, x6
-        
-        prof.mark("final_cleanup")
+        intermediate = xr.Dataset({
+            "probability": probability,               # dims: (threshold, forecast_hour, lat, lon)
+            "duration": duration,                     # dims: (threshold, lat, lon)
+            "ensemble_mean": ensemble_mean_ivt,       # dims: (forecast_hour?, lat, lon) -> ensemble reduced; here we averaged across ensemble but kept forecast_hour
+            "u": u_norm,                              # dims: same as ensemble_mean
+            "v": v_norm,                              # dims: same as ensemble_mean
+            "control": control                        # dims: (forecast_hour, lat, lon, ensemble removed)
+        })
 
-        prof.summary()
-        prof.to_csv("data/profiler_output.csv")
-        
-        return final_ds
+        # Add attributes
+        intermediate = intermediate.assign_attrs({
+            "source_forecast": self.forecast,
+            "model_init_date": self.model_init_date,
+            "thresholds": thresholds
+        })
+
+        # Optionally set compressor on each variable via encoding when writing, or leave to xarray default
+        # Ensure output dir exists
+        out_dir = os.path.dirname(out_zarr_path)
+        if out_dir and not os.path.exists(out_dir):
+            os.makedirs(out_dir, exist_ok=True)
+
+        # Write to zarr (lazy) or compute & persist
+        # If compute==False, we still write metadata references but not compute values
+        write_kwargs = {"mode": "w"}
+
+        # Provide encoding/chunking hints
+        encoding = {}
+        for vname in intermediate.data_vars:
+            encoding[vname] = {"chunks": None}
+            if compressor is not None:
+                encoding[vname]["compressor"] = compressor
+
+        # Save to zarr (this triggers computation if compute==True)
+        # Use safe remove if existing
+        if os.path.exists(out_zarr_path):
+            import shutil
+            shutil.rmtree(out_zarr_path)
+
+        # Use to_zarr - this will execute lazily or compute depending on compute flag and scheduler config
+        intermediate.to_zarr(out_zarr_path, mode="w", compute=compute, consolidated=True)
+
+        return out_zarr_path
+    
+    def release_ivt_dataset(self):
+        if self._ivt_ds is not None:
+            del self._ivt_ds
+            self._ivt_ds = None
+

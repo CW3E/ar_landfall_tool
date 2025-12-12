@@ -116,18 +116,41 @@ print("===============================================\n")
 loader = LoadDatasets(model, locs[0], ptlocs[0], init_date)
 
 print("Reading IVT dataset once...")
-ds_ivt = loader.read_ivt_data()         # <-- cached internally & reused everywhere
+ds_full = loader.read_ivt_data()         # <-- cached internally & reused everywhere
 
 print("Computing IVT ensemble mean for vector plots once...")
 ds_ivt_mean = loader.calc_ivt_mean_for_vector_plots()
+
+print("Computing intermediate products once")
+# compute intermediate products once (lazy dask)
+zarr_path = loader.compute_and_save_intermediate_products(
+    ds=ds_full,
+    thresholds=[100,150,250,500,750,1000],
+    out_zarr_path=f"data/ivt_intermediate_{model}_{init_date}.zarr",
+    compute=True,   # set False to defer compute to a dask cluster
+    chunking={'ensemble': -1, 'forecast_hour': 168, 'lat': 200, 'lon': 200}
+)
 
 # Only load precipitation dataset once if the model is GEFS or ECMWF
 print("Loading QPF once...")
 if model in ("ECMWF", "GEFS"):
     ds_qpf = loader.load_prec_QPF_dataset()  # optional depending on workflow
 
+# then for each ptloc just extract and save a small netcdf
+print("Extracting ptlocs to save as intermediate data...")
+for loc, ptloc in zip(locs, ptlocs):
+    loader.extract_points_from_intermediate_zarr(
+        zarr_path=zarr_path,
+        loc=loc,
+        ptloc=ptloc,
+        out_nc_path=f"data/intermediate_{model}_{init_date}_{loc}_{ptloc}.nc",
+        save_nc=True
+    )
+# you can now free memory and later load the small per-ptloc netCDF for plotting
+del ds_full 
+
 # ================================================================
-# 2. MAIN LOOP OVER LOCATIONS USING THE SAME ds_ivt
+# 2. Load and Plot Intermediate Data
 # ================================================================
 for i, (loc, ori, ptloc) in enumerate(zip(locs, oris, ptlocs)):
     print("\n--------------------------------------------")
@@ -136,22 +159,8 @@ for i, (loc, ori, ptloc) in enumerate(zip(locs, oris, ptlocs)):
     print("Elapsed:", datetime.now() - startTime)
 
     try:
-        # -----------------------------------------
-        # Update location info inside loader
-        # -----------------------------------------
-        loader.loc = loc
-        loader.ptloc = ptloc
-        loader.get_lat_lons_from_txt_file()
 
-        # -----------------------------------------
-        # Compute point-based probabilities
-        # Using the SAME ds_ivt loaded once above
-        # -----------------------------------------
-        print("\n--------------------------------------------")
-        print(f" Computing point-based probabilities")
-        print("--------------------------------------------")
-        print("Elapsed:", datetime.now() - startTime)
-        ds_pt = loader.calc_ivt_probability_and_duration_for_points(ds_ivt)
+        ds_pt = xr.open_dataset(f"data/intermediate_{model}_{init_date}_{loc}_{ptloc}.nc")
 
         # Save or plot results
         # -----------------------------------------
@@ -206,7 +215,7 @@ for i, (loc, ori, ptloc) in enumerate(zip(locs, oris, ptlocs)):
 print("\nReleasing internal dataset cache...")
 loader.release_ivt_dataset()
 
-del ds_ivt
+del ds_ivt_mean
 del ds_qpf
 
 print("\n===============================================")
