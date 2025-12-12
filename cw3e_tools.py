@@ -137,7 +137,7 @@ def extract_points_from_intermediate_zarr(
     """
 
     if out_nc_path is None:
-        out_nc_path = f"intermediate_{self.forecast}_{self.model_init_date}_{loc}_{ptloc}.nc"
+        out_nc_path = f"data/intermediate_{self.forecast}_{self.model_init_date}_{loc}_{ptloc}.nc"
 
     # open zarr lazily
     ds = xr.open_zarr(zarr_path, consolidated=True)
@@ -421,7 +421,7 @@ class LoadDatasets:
             thresholds = [100, 150, 250, 500, 750, 1000]
 
         if out_zarr_path is None:
-            out_zarr_path = f"ivt_intermediate_{self.forecast}_{self.model_init_date}.zarr"
+            out_zarr_path = f"data/ivt_intermediate_{self.forecast}_{self.model_init_date}.zarr"
 
         # sensible chunking defaults (tweak for your machine)
         if chunking is None:
