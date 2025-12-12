@@ -118,6 +118,9 @@ loader = LoadDatasets(model, locs[0], ptlocs[0], init_date)
 print("Reading IVT dataset once...")
 ds_ivt = loader.read_ivt_data()         # <-- cached internally & reused everywhere
 
+print("Computing IVT ensemble mean for vector plots once...")
+ds_ivt_mean = loader.calc_ivt_mean_for_vector_plots()
+
 # Only load precipitation dataset once if the model is GEFS or ECMWF
 print("Loading QPF once...")
 if model in ("ECMWF", "GEFS"):
@@ -181,7 +184,7 @@ for i, (loc, ori, ptloc) in enumerate(zip(locs, oris, ptlocs)):
             # Vector plot (only for ECMWF/GEFS)
             if model in ("ECMWF", "GEFS"):
                 vector = landfall_tool_vector(
-                    ds_pt=ds_pt, ds=ds, prec=ds_qpf,
+                    ds_pt=ds_pt, ds=ds_ivt_mean, prec=ds_qpf,
                     loc=loc, ptloc=ptloc,
                     forecast=model, threshold=thres,
                     orientation=ori

@@ -20,8 +20,10 @@ from PIL import Image
 from matplotlib import font_manager as fm
 import matplotlib.pyplot as plt
 import concurrent.futures
-from concurrent.futures import ThreadPoolExecutor
+# from concurrent.futures import ThreadPoolExecutor
 from typing import Tuple, Optional, List
+
+from profiler import StepProfiler
 
 ivt_colors = {'250': (255./255.0, 174./255.0, 0./255.0), # orange
               '500': (236./255.0, 0./255.0, 7./255.0), # red
@@ -119,6 +121,7 @@ class LoadDatasets:
     _cached_prec = {}             # key: (forecast, init_date, forecast) -> prec dataset
 
     def __init__(self, model: str, loc: str, ptloc: str, init_date: str):
+
         self.forecast = model
         self.loc = loc
         self.ptloc = ptloc
@@ -323,18 +326,24 @@ class LoadDatasets:
         Returns a merged dataset containing:
           ensemble_mean, control, v, u, duration (threshold dim), probability (threshold dim)
         """
+        prof = StepProfiler() ## initialize profiler to help diagnose bottlenecks
+        prof.mark("start")
+        
         if ds is None:
             ds = self.ds_full
 
         # make sure ds has forecast_hour and ensemble dims
         if 'forecast_hour' not in ds.dims and 'forecast_hour' not in ds.coords:
             raise KeyError("Dataset lacks 'forecast_hour' coordinate required for duration/probability calculations")
-
+        
+        prof.mark("pull_ivt_data")
+        
         # Subset to points
         self.get_lat_lons_from_txt_file()
         x = xr.DataArray(self.lons, dims=['location'])
         y = xr.DataArray(self.lats, dims=['location'])
         ds_pts = ds.sel(lon=x, lat=y, method='nearest')
+        prof.mark("subset_ivt_to_pts")
 
         # Precompute commonly used things
         thresholds = [100, 150, 250, 500, 750, 1000]
@@ -349,7 +358,7 @@ class LoadDatasets:
 
         prob_list = []
         dur_list = []
-
+        
         for thres in thresholds:
             mask = ivt >= thres  # boolean (forecast_hour, ensemble, location)
             # probability = fraction of ensembles >= thres, but only where valid_mask is True
@@ -361,22 +370,27 @@ class LoadDatasets:
             dur_list.append(hours)
 
         # concat across thresholds into a threshold dimension
-        duration_ds = xr.concat(dur_list, pd.Index(thresholds, name='threshold')).astype('float32')
-        prob_ds = xr.concat(prob_list, pd.Index(thresholds, name='threshold')).astype('float32')
+        duration_ds = xr.concat(dur_list, pd.Index(thresholds, name='threshold'))
+        prob_ds = xr.concat(prob_list, pd.Index(thresholds, name='threshold'))
+        
+        prof.mark("compute_duration_probabilities_thres")
+        del dur_list, prob_list, mask, ivt
 
         # Compute ensemble mean vectors (uvec, vvec) and ensemble_mean IVT using ensemble axis,
         # but only where there is enough ensemble data (valid_mask)
         print("Computing ensemble means and normalized vectors...")
-        uvec = ds_pts['uIVT'].astype('float64').where(data_size >= self.datasize_min).mean(dim='ensemble').astype('float32')
-        vvec = ds_pts['vIVT'].astype('float64').where(data_size >= self.datasize_min).mean(dim='ensemble').astype('float32')
-        ensemble_mean = ds_pts['IVT'].astype('float64').where(data_size >= self.datasize_min).mean(dim='ensemble').astype('float32')
+        uvec = ds_pts['uIVT'].where(data_size >= self.datasize_min).mean(dim='ensemble')
+        vvec = ds_pts['vIVT'].where(data_size >= self.datasize_min).mean(dim='ensemble')
+        ensemble_mean = ds_pts['IVT'].where(data_size >= self.datasize_min).mean(dim='ensemble')
         
-        del ivt, data_size, valid_mask
+        prof.mark("compute_ensemble_mean")
 
         # normalize vectors by ensemble mean (avoid divide-by-zero)
         with np.errstate(divide='ignore', invalid='ignore'):
             u = (uvec / ensemble_mean).where(~np.isclose(ensemble_mean, 0))
             v = (vvec / ensemble_mean).where(~np.isclose(ensemble_mean, 0))
+            
+        prof.mark("normalize_vectors")
 
         # control = ensemble member index 0 (as in original code)
         control = ds_pts['IVT'].sel(ensemble=0)
@@ -392,22 +406,14 @@ class LoadDatasets:
         final_ds = xr.merge([x1, x2, x3, x4, x5, x6])
         final_ds = final_ds.assign_attrs(model_init_date=self.model_init_date)
         
+        prof.mark("build_dataset")
+        
         del uvec, vvec, ensemble_mean, control
         del x1, x2, x3, x4, x5, x6
         
-        return final_ds
+        prof.mark("final_cleanup")
 
-    # --------------------------
-    # Public combined method
-    # --------------------------
-    def calc_ivt_vars(self) -> Tuple[xr.Dataset, xr.Dataset]:
-        """
-        Primary entrypoint used by the rest of your workflow.
-        Returns:
-            (ds_pt, ds_full)
-        where ds_pt is the point-subset dataset with ensemble_mean/control/v/u/probability/duration,
-        and ds_full is the (cached) preprocessed full IVT dataset useful for e.g. vector plots
-        that require full-field differencing across models (ECMWF-GEFS workflow).
-        """
-        ds_pt = self.calc_ivt_probability_and_duration_for_points(self.ds_full)
-        return ds_pt, self.ds_full
+        prof.summary()
+        prof.to_csv("data/profiler_output.csv")
+        
+        return final_ds
