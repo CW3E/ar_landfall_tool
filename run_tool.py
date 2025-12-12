@@ -11,6 +11,7 @@ for different IVT thresholds and coastal/foothill/inland points.
 
 import os
 import sys
+import xarray as xr
 from datetime import datetime
 import traceback
 
@@ -117,9 +118,11 @@ loader = LoadDatasets(model, locs[0], ptlocs[0], init_date)
 
 print("Reading IVT dataset once...")
 ds_full = loader.read_ivt_data()         # <-- cached internally & reused everywhere
+print("Elapsed:", datetime.now() - startTime)
 
 print("Computing IVT ensemble mean for vector plots once...")
 ds_ivt_mean = loader.calc_ivt_mean_for_vector_plots()
+print("Elapsed:", datetime.now() - startTime)
 
 print("Computing intermediate products once")
 # compute intermediate products once (lazy dask)
@@ -130,11 +133,13 @@ zarr_path = loader.compute_and_save_intermediate_products(
     compute=True,   # set False to defer compute to a dask cluster
     chunking={'ensemble': -1, 'forecast_hour': 168, 'lat': 200, 'lon': 200}
 )
+print("Elapsed:", datetime.now() - startTime)
 
 # Only load precipitation dataset once if the model is GEFS or ECMWF
 print("Loading QPF once...")
 if model in ("ECMWF", "GEFS"):
     ds_qpf = loader.load_prec_QPF_dataset()  # optional depending on workflow
+print("Elapsed:", datetime.now() - startTime)
 
 # then for each ptloc just extract and save a small netcdf
 print("Extracting ptlocs to save as intermediate data...")
@@ -146,6 +151,7 @@ for loc, ptloc in zip(locs, ptlocs):
         out_nc_path=f"data/intermediate_{model}_{init_date}_{loc}_{ptloc}.nc",
         save_nc=True
     )
+print("Elapsed:", datetime.now() - startTime)
 # you can now free memory and later load the small per-ptloc netCDF for plotting
 del ds_full 
 
@@ -212,9 +218,6 @@ for i, (loc, ori, ptloc) in enumerate(zip(locs, oris, ptlocs)):
 # ================================================================
 # 3. Final Cleanup After Workflow Completes
 # ================================================================
-print("\nReleasing internal dataset cache...")
-loader.release_ivt_dataset()
-
 del ds_ivt_mean
 del ds_qpf
 
