@@ -346,24 +346,24 @@ class LoadDatasets:
         if thresholds is None:
             thresholds = [100, 150, 250, 500, 750, 1000]
 
-        if out_zarr_path is None:
-            out_zarr_path = f"data/tmp/ivt_intermediate_{self.forecast}_{self.model_init_date}.zarr"
-        print('Chunking data...')
-        # sensible chunking defaults (tweak for your machine)
-        if chunking is None:
-            chunking = {}
-            # try to preserve existing dims where available
-            if 'ensemble' in ds.dims:
-                chunking['ensemble'] = -1   # keep ensemble as one chunk (good for mean reductions)
-            if 'forecast_hour' in ds.dims:
-                chunking['forecast_hour'] = min(24*7, ds.sizes.get('forecast_hour', 24))
-            if 'lat' in ds.dims:
-                chunking['lat'] = 200
-            if 'lon' in ds.dims:
-                chunking['lon'] = 200
+#         if out_zarr_path is None:
+#             out_zarr_path = f"data/tmp/ivt_intermediate_{self.forecast}_{self.model_init_date}.zarr"
+#         print('Chunking data...')
+#         # sensible chunking defaults (tweak for your machine)
+#         if chunking is None:
+#             chunking = {}
+#             # try to preserve existing dims where available
+#             if 'ensemble' in ds.dims:
+#                 chunking['ensemble'] = -1   # keep ensemble as one chunk (good for mean reductions)
+#             if 'forecast_hour' in ds.dims:
+#                 chunking['forecast_hour'] = min(24*7, ds.sizes.get('forecast_hour', 24))
+#             if 'lat' in ds.dims:
+#                 chunking['lat'] = 200
+#             if 'lon' in ds.dims:
+#                 chunking['lon'] = 200
 
-        # Re-chunk dataset for efficient reductions
-        ds = ds.chunk(chunking)
+#         # Re-chunk dataset for efficient reductions
+#         ds = ds.chunk(chunking)
         
         print('Computing thresholds and duration...')
         # Compute data_size (number of non-missing ensembles) per (forecast_hour, lat, lon)
