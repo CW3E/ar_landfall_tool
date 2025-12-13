@@ -307,7 +307,7 @@ class LoadDatasets:
             if not hasattr(self, 'ds_full') or self.ds_full is None:
                 raise ValueError("Full dataset not provided and self.ds_full is not set.")
             ds = self.ds_full
-        print(ds)
+
         # slice first 7 days (0..24*7), compute mean across forecast_hour & ensemble
         ds_small = ds.sel(forecast_hour=slice(0, 24 * 7)).astype('float64')
         ensemble_mean = ds_small.mean(dim=['forecast_hour', 'ensemble']).astype('float32')
