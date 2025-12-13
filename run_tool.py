@@ -195,6 +195,7 @@ if model in ("ECMWF", "GEFS"):
 
 # then for each ptloc just extract and save a small netcdf
 print("Extracting ptlocs to save as netcdf..")
+print(intermediate)
 for loc, ptloc in zip(locs, ptlocs):
     loader.extract_points_from_intermediate(
         loc=loc,

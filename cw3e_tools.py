@@ -526,6 +526,7 @@ class LoadDatasets:
         # Optional: add coords for the point names or indices
         ds_pt = ds_pt.assign_coords(location=np.arange(len(lons)))
         ds_pt = ds_pt.assign_coords(ptloc=np.array([ptloc]))
+        print(ds_pt)
 
         if save_nc:
             # Save small netCDF (no compression by default)
