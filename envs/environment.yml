@@ -18,3 +18,4 @@ dependencies:
   - h5netcdf       # optional, alternative NetCDF backend
   - cfgrib         # optional, only if you need GRIB support
   - eccodes        # required by cfgrib
+  - scipy          # required to regrid quivers on vector plot

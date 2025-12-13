@@ -296,9 +296,12 @@ class LoadDatasets:
         if key in LoadDatasets._cached_vector_mean:
             return LoadDatasets._cached_vector_mean[key]
 
+        # Defaults
         if ds is None:
+            if not hasattr(self, 'ds_full') or self.ds_full is None:
+                raise ValueError("Full dataset not provided and self.ds_full is not set.")
             ds = self.ds_full
-
+        print(ds)
         # slice first 7 days (0..24*7), compute mean across forecast_hour & ensemble
         ds_small = ds.sel(forecast_hour=slice(0, 24 * 7)).astype('float64')
         ensemble_mean = ds_small.mean(dim=['forecast_hour', 'ensemble']).astype('float32')
@@ -389,6 +392,9 @@ class LoadDatasets:
         # First sum over forecast_hour: dims (threshold, ensemble, lat, lon) -> then mean over ensemble
         # We want duration per (threshold, lat, lon) aggregated across forecast_hour.
         duration = mask.sum(dim='forecast_hour') * duration_multiplier  # dims (threshold, ensemble, lat, lon)
+        
+        if self.forecast == 'W-WRF':
+            duration = duration.mean(dim='ensemble')
         
         valid_loc = data_size.max(dim='forecast_hour') >= self.datasize_min  # dims (lat, lon)
         # Broadcast valid_loc to probability and duration (threshold, lat, lon)
