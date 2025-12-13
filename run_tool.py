@@ -130,6 +130,8 @@ if model == "ECMWF-GEFS":
     ds_gefs  = loader_gefs.read_ivt_data()
 
     # Align explicitly to be safe
+    print(ds_ecmwf)
+    print(ds_gefs)
     ds_ecmwf, ds_gefs = xr.align(ds_ecmwf, ds_gefs, join="exact")
 
     ds_full = ds_ecmwf - ds_gefs
