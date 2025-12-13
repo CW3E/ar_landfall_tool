@@ -152,7 +152,16 @@ if model == "ECMWF-GEFS":
     # Align and subtract
     interm_ecmwf = interm_ecmwf.drop_vars(["duration", "ensemble"])
     interm_gefs = interm_gefs.drop_vars(["duration", "ensemble"])
-    interm_gefs = interm_gefs.sel(forecast_hour=interm_ecmwf.forecast_hour.values)
+    
+    ## select only common forecast hour values
+    common_hours = np.intersect1d(
+    interm_ecmwf.forecast_hour.values,
+    interm_gefs.forecast_hour.values
+)
+
+    interm_ecmwf = interm_ecmwf.sel(forecast_hour=common_hours)
+    interm_gefs  = interm_gefs.sel(forecast_hour=common_hours)
+
     print(interm_ecmwf)
     print(interm_gefs)
     interm_ecmwf, interm_gefs = xr.align(interm_ecmwf, interm_gefs, join="exact")
