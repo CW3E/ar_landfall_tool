@@ -197,8 +197,14 @@ class LoadDatasets:
 
         # Model-specific adjustments
         if self.forecast == 'ECMWF':
-            if 'forecast_time' in ds:
-                ds = ds.rename({'forecast_time': 'forecast_hour'})
+            if 'forecast_time' in ds.dims:
+                ds = ds.rename_dims({'forecast_time': 'forecast_hour'})
+
+            if 'forecast_times' in ds:
+                ds = ds.assign_coords(
+                    forecast_hour=ds['forecast_times'].values
+                )
+                ds = ds.drop_vars('forecast_times')
             # historic: for years > 2020 forecast_hour was stored differently
             try:
                 dt_init = datetime.datetime.strptime(self.model_init_date, "%Y%m%d%H")
