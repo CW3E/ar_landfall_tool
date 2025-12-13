@@ -208,7 +208,8 @@ class LoadDatasets:
             # historic: for years > 2020 forecast_hour was stored differently
             try:
                 dt_init = datetime.datetime.strptime(self.model_init_date, "%Y%m%d%H")
-                if int(dt_init.strftime('%Y')) > 2020 and 'forecast_hour' in ds:
+                if int(dt_init.strftime('%Y')) < 2020 and 'forecast_hour' in ds:
+                    print("Modifying forecast hours since year is less than 2020")
                     ds['forecast_hour'] = ds['forecast_hour'] * 3
             except Exception:
                 pass
