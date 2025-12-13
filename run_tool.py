@@ -135,7 +135,7 @@ print("Elapsed:", datetime.now() - startTime)
 
 print("Computing intermediate products once")
 # compute intermediate products once (lazy dask)
-zarr_path = loader.compute_intermediate_products(
+intermediate = loader.compute_intermediate_products(
     ds=ds_full,
     thresholds=[100,150,250,500,750,1000],
     compute=False,   # set False to defer compute to a dask cluster
@@ -160,7 +160,7 @@ for loc, ptloc in zip(locs, ptlocs):
     )
 print("Elapsed:", datetime.now() - startTime)
 # you can now free memory and later load the small per-ptloc netCDF for plotting
-del ds_full 
+del ds_full, intermediate
 
 # ================================================================
 # 2. Load and Plot Intermediate Data
@@ -173,7 +173,7 @@ for i, (loc, ori, ptloc) in enumerate(zip(locs, oris, ptlocs)):
 
     try:
 
-        ds_pt = xr.open_dataset(f"data/intermediate_{model}_{init_date}_{loc}_{ptloc}.nc")
+        ds_pt = xr.open_dataset(f"data/tmp/intermediate_{model}_{init_date}_{loc}_{ptloc}.nc")
 
         # Save or plot results
         # -----------------------------------------
