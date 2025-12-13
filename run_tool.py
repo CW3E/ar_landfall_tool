@@ -96,7 +96,6 @@ def load_intermediate_data(model, locs, ptlocs, init_date):
     intermediate = loader.compute_intermediate_products(
         ds=ds_full,
         thresholds=[100,150,250,500,750,1000],
-        compute=False,   # set False to defer compute to a dask cluster
         chunking={'ensemble': -1, 'forecast_hour': 168, 'lat': 200, 'lon': 200}
     )
     print("Elapsed:", datetime.now() - startTime)

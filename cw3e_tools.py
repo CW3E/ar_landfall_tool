@@ -212,13 +212,17 @@ class LoadDatasets:
                     ds['forecast_hour'] = ds['forecast_hour'] * 3
             except Exception:
                 pass
+            
+            ds = ds.sel(lon=slice(-170, -105)) ## subset to match GEFS
 
         if self.forecast == 'W-WRF':
             if 'ensembles' in ds:
                 ds = ds.rename({'ensembles': 'ensemble'})
                 
         if self.forecast == 'GEFS':
-            ds = ds.sel(lat=slice(70, 10), lon=slice(150, 295))
+            ds = ds.sel(lat=slice(70, 10), lon=slice(-170, -105)) # subset to match ECMWF
+            
+        
 
         # Guarantee standard coordinate names: forecast_hour, ensemble, location, lat, lon
         # (if certain names don't exist downstream code should handle gracefully)
@@ -323,8 +327,6 @@ class LoadDatasets:
         thresholds: Optional[Sequence[int]] = None,
         duration_multiplier: int = 3,
         chunking: Optional[Dict[str,int]] = None,
-        compute: bool = True,
-        compressor=None
     ) -> str:
         """
         Compute intermediate IVT products on the full grid (lazy/dask).
@@ -340,11 +342,6 @@ class LoadDatasets:
         chunking : dict
             Chunk sizes for dask (e.g. {'ensemble': -1, 'lat': 200, 'lon':200}).
             If None, a sensible default is chosen.
-        compute : bool
-            If True, triggers `.to_zarr(..., compute=True)` which executes the dask graph.
-            If False, the zarr metadata is written lazily (requires client/workers to compute later).
-        compressor : numcodecs compressor instance or None
-            Optional compressor for Zarr store (e.g., zarr.Blosc(cname='zstd', clevel=3)).
         Returns
         -------
         """
@@ -472,33 +469,6 @@ class LoadDatasets:
         })
         
         self.intermediate = intermediate
-        
-#         print('Writing to ZARR...')
-#         # Optionally set compressor on each variable via encoding when writing, or leave to xarray default
-#         # Ensure output dir exists
-#         out_dir = os.path.dirname(out_zarr_path)
-#         if out_dir and not os.path.exists(out_dir):
-#             os.makedirs(out_dir, exist_ok=True)
-
-#         # Write to zarr (lazy) or compute & persist
-#         # If compute==False, we still write metadata references but not compute values
-#         write_kwargs = {"mode": "w"}
-
-#         # Provide encoding/chunking hints
-#         encoding = {}
-#         for vname in intermediate.data_vars:
-#             encoding[vname] = {"chunks": None}
-#             if compressor is not None:
-#                 encoding[vname]["compressor"] = compressor
-
-#         # Save to zarr (this triggers computation if compute==True)
-#         # Use safe remove if existing
-#         if os.path.exists(out_zarr_path):
-#             import shutil
-#             shutil.rmtree(out_zarr_path)
-
-#         # Use to_zarr - this will execute lazily or compute depending on compute flag and scheduler config
-#         intermediate.to_zarr(out_zarr_path, mode="w", compute=compute, consolidated=True)
 
         return intermediate
     
