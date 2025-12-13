@@ -414,18 +414,30 @@ class LoadDatasets:
         duration = duration.assign_coords(threshold=threshold_coord)
 
         print('Calculating ensemble means...')
-        # Ensemble means for u, v, ivt (reduce along ensemble)
-        ensemble_mean_ivt = ds['IVT'].where(data_size >= self.datasize_min).mean(dim='ensemble')
-        ensemble_mean_u = ds['uIVT'].where(data_size >= self.datasize_min).mean(dim='ensemble')
-        ensemble_mean_v = ds['vIVT'].where(data_size >= self.datasize_min).mean(dim='ensemble')
+        # Ensemble means (reduce FIRST)
+        ensemble_mean_ivt = ds['IVT'].mean(dim='ensemble')
+        ensemble_mean_u   = ds['uIVT'].mean(dim='ensemble')
+        ensemble_mean_v   = ds['vIVT'].mean(dim='ensemble')
 
-        # Normalize vectors (avoid divide-by-zero)
-        with np.errstate(divide='ignore', invalid='ignore'):
-            u_norm = (ensemble_mean_u / ensemble_mean_ivt).where(~np.isclose(ensemble_mean_ivt, 0))
-            v_norm = (ensemble_mean_v / ensemble_mean_ivt).where(~np.isclose(ensemble_mean_ivt, 0))
+        # Spatial validity mask
+        valid_loc = data_size.max(dim='forecast_hour') >= self.datasize_min
 
-        # Control ensemble member 0
-        control = ds['IVT'].sel(ensemble=0)
+        ensemble_mean_ivt = ensemble_mean_ivt.where(valid_loc)
+        ensemble_mean_u   = ensemble_mean_u.where(valid_loc)
+        ensemble_mean_v   = ensemble_mean_v.where(valid_loc)
+
+        # Normalize vectors safely
+        eps = 1e-6
+        u_norm = xr.where(ensemble_mean_ivt > eps,
+                          ensemble_mean_u / ensemble_mean_ivt,
+                          np.nan)
+        v_norm = xr.where(ensemble_mean_ivt > eps,
+                          ensemble_mean_v / ensemble_mean_ivt,
+                          np.nan)
+
+        # Control member
+        control = ds['IVT'].isel(ensemble=0)
+
 
         # Assemble intermediate dataset
         print('Assemble intermediate dataset...')
