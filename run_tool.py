@@ -135,11 +135,10 @@ print("Elapsed:", datetime.now() - startTime)
 
 print("Computing intermediate products once")
 # compute intermediate products once (lazy dask)
-zarr_path = loader.compute_and_save_intermediate_products(
+zarr_path = loader.compute_intermediate_products(
     ds=ds_full,
     thresholds=[100,150,250,500,750,1000],
-    out_zarr_path=f"data/ivt_intermediate_{model}_{init_date}.zarr",
-    compute=True,   # set False to defer compute to a dask cluster
+    compute=False,   # set False to defer compute to a dask cluster
     chunking={'ensemble': -1, 'forecast_hour': 168, 'lat': 200, 'lon': 200}
 )
 print("Elapsed:", datetime.now() - startTime)
@@ -154,10 +153,9 @@ print("Elapsed:", datetime.now() - startTime)
 print("Extracting ptlocs to save as intermediate data...")
 for loc, ptloc in zip(locs, ptlocs):
     loader.extract_points_from_intermediate_zarr(
-        zarr_path=zarr_path,
         loc=loc,
         ptloc=ptloc,
-        out_nc_path=f"data/intermediate_{model}_{init_date}_{loc}_{ptloc}.nc",
+        out_nc_path=f"data/tmp/intermediate_{model}_{init_date}_{loc}_{ptloc}.nc",
         save_nc=True
     )
 print("Elapsed:", datetime.now() - startTime)

@@ -305,18 +305,17 @@ class LoadDatasets:
         LoadDatasets._cached_vector_mean[key] = ensemble_mean
         return ensemble_mean
 
-    def compute_and_save_intermediate_products(
+    def compute_intermediate_products(
         self,
         ds: Optional[xr.Dataset] = None,
         thresholds: Optional[Sequence[int]] = None,
         duration_multiplier: int = 3,
-        out_zarr_path: str = None,
         chunking: Optional[Dict[str,int]] = None,
         compute: bool = True,
         compressor=None
     ) -> str:
         """
-        Compute intermediate IVT products on the full grid (lazy/dask) and save to Zarr.
+        Compute intermediate IVT products on the full grid (lazy/dask).
 
         Args
         ----
@@ -326,9 +325,6 @@ class LoadDatasets:
             IVT thresholds to compute (default [100,150,250,500,750,1000]).
         duration_multiplier : int
             Multiplier to convert counts to hours (default 3 for 3-hour timesteps).
-        out_zarr_path : str
-            Path to write Zarr dataset. If None, defaults to
-            f"ivt_intermediate_{self.forecast}_{self.model_init_date}.zarr".
         chunking : dict
             Chunk sizes for dask (e.g. {'ensemble': -1, 'lat': 200, 'lon':200}).
             If None, a sensible default is chosen.
@@ -339,8 +335,6 @@ class LoadDatasets:
             Optional compressor for Zarr store (e.g., zarr.Blosc(cname='zstd', clevel=3)).
         Returns
         -------
-        out_zarr_path : str
-            Path to the saved zarr store.
         """
 
         # Defaults
@@ -464,38 +458,39 @@ class LoadDatasets:
             "thresholds": thresholds
         })
         
-        print('Writing to ZARR...')
-        # Optionally set compressor on each variable via encoding when writing, or leave to xarray default
-        # Ensure output dir exists
-        out_dir = os.path.dirname(out_zarr_path)
-        if out_dir and not os.path.exists(out_dir):
-            os.makedirs(out_dir, exist_ok=True)
+        self.intermediate = intermediate
+        
+#         print('Writing to ZARR...')
+#         # Optionally set compressor on each variable via encoding when writing, or leave to xarray default
+#         # Ensure output dir exists
+#         out_dir = os.path.dirname(out_zarr_path)
+#         if out_dir and not os.path.exists(out_dir):
+#             os.makedirs(out_dir, exist_ok=True)
 
-        # Write to zarr (lazy) or compute & persist
-        # If compute==False, we still write metadata references but not compute values
-        write_kwargs = {"mode": "w"}
+#         # Write to zarr (lazy) or compute & persist
+#         # If compute==False, we still write metadata references but not compute values
+#         write_kwargs = {"mode": "w"}
 
-        # Provide encoding/chunking hints
-        encoding = {}
-        for vname in intermediate.data_vars:
-            encoding[vname] = {"chunks": None}
-            if compressor is not None:
-                encoding[vname]["compressor"] = compressor
+#         # Provide encoding/chunking hints
+#         encoding = {}
+#         for vname in intermediate.data_vars:
+#             encoding[vname] = {"chunks": None}
+#             if compressor is not None:
+#                 encoding[vname]["compressor"] = compressor
 
-        # Save to zarr (this triggers computation if compute==True)
-        # Use safe remove if existing
-        if os.path.exists(out_zarr_path):
-            import shutil
-            shutil.rmtree(out_zarr_path)
+#         # Save to zarr (this triggers computation if compute==True)
+#         # Use safe remove if existing
+#         if os.path.exists(out_zarr_path):
+#             import shutil
+#             shutil.rmtree(out_zarr_path)
 
-        # Use to_zarr - this will execute lazily or compute depending on compute flag and scheduler config
-        intermediate.to_zarr(out_zarr_path, mode="w", compute=compute, consolidated=True)
+#         # Use to_zarr - this will execute lazily or compute depending on compute flag and scheduler config
+#         intermediate.to_zarr(out_zarr_path, mode="w", compute=compute, consolidated=True)
 
-        return out_zarr_path
+        return intermediate
     
-    def extract_points_from_intermediate_zarr(
+    def extract_points_from_intermediate(
         self,
-        zarr_path: str,
         loc: str,
         ptloc: str,
         out_nc_path: Optional[str] = None,
@@ -503,13 +498,11 @@ class LoadDatasets:
         save_nc: bool = True
     ) -> xr.Dataset:
         """
-        Open the intermediate Zarr store, subset to points defined by (loc, ptloc),
+        Open the intermediate data, subset to points defined by (loc, ptloc),
         and optionally save the result as a small NetCDF for plotting.
 
         Args
         ----
-        zarr_path : str
-          Path to intermediate zarr saved by compute_and_save_intermediate_products.
         loc : str
           Location group (used to find lat/lons file path via self.path_to_out)
         ptloc : str
@@ -528,11 +521,8 @@ class LoadDatasets:
           Point-subset dataset (contains probability, duration, ensemble_mean, u, v, control)
         """
 
-        if out_nc_path is None:
-            out_nc_path = f"data/tmp/intermediate_{self.forecast}_{self.model_init_date}_{loc}_{ptloc}.nc"
-
-        # open zarr lazily
-        ds = xr.open_zarr(zarr_path, consolidated=True)
+        # pull intermediate data
+        ds = self.intermediate
 
         # read lat/lon file for the ptloc
         textpts_fname = os.path.join(self.path_to_out, f'{loc}/latlon_{ptloc}.txt')
