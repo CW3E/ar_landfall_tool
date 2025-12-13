@@ -150,6 +150,8 @@ if model == "ECMWF-GEFS":
     )
 
     # Align and subtract
+    interm_ecmwf = interm_ecmwf.drop_vars("duration")
+    interm_gefs = interm_gefs.drop_vars("duration")
     print(interm_ecmwf)
     print(interm_gefs)
     interm_ecmwf, interm_gefs = xr.align(interm_ecmwf, interm_gefs, join="exact")
