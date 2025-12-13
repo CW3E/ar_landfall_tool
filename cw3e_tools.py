@@ -151,7 +151,7 @@ class LoadDatasets:
             self.ensemble_name = 'GEFS'
             self.datasize_min = 15.0
 
-        elif self.forecast in ('ECMWF', 'ECMWF-GEFS'):
+        elif self.forecast in ('ECMWF'):
             self.fpath = '/data/projects/derived_products/ECMWF_IVT/Ensemble/'
             self.fname = os.path.join(self.fpath, f'IVT_EC_{self.model_init_date}.nc')
             self.ensemble_name = 'ECMWF'
@@ -216,6 +216,9 @@ class LoadDatasets:
         if self.forecast == 'W-WRF':
             if 'ensembles' in ds:
                 ds = ds.rename({'ensembles': 'ensemble'})
+                
+        if self.forecast == 'GEFS':
+            ds = ds.sel(lat=slice(70, 10), lon=slice(150, 295))
 
         # Guarantee standard coordinate names: forecast_hour, ensemble, location, lat, lon
         # (if certain names don't exist downstream code should handle gracefully)

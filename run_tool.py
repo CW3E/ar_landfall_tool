@@ -83,6 +83,25 @@ def threshold_list(ptloc):
     return [100, 150, 250, 500, 750] if ptloc == "intwest" else \
            [150, 250, 500, 750]
 
+def load_intermediate_data(model, locs, ptlocs, init_date):
+    # We temporarily initialize with dummy loc/ptloc; these get updated later
+    loader = LoadDatasets(model, locs[0], ptlocs[0], init_date)
+
+    print("Reading IVT dataset once...")
+    ds_full = loader.read_ivt_data()         # <-- cached internally & reused everywhere
+    print("Elapsed:", datetime.now() - startTime)
+    
+    print("Computing intermediate products once")
+    # compute intermediate products once (lazy dask)
+    intermediate = loader.compute_intermediate_products(
+        ds=ds_full,
+        thresholds=[100,150,250,500,750,1000],
+        compute=False,   # set False to defer compute to a dask cluster
+        chunking={'ensemble': -1, 'forecast_hour': 168, 'lat': 200, 'lon': 200}
+    )
+    print("Elapsed:", datetime.now() - startTime)
+    
+    return loader, intermediate
 
 # ---------------------------------------------------------------------
 # Main Script
@@ -123,26 +142,24 @@ clear_tmp_dir(tmp_directory)
 # 1. CREATE ONE LOADER PER MODEL RUN (not per-location)
 # ================================================================
 if model == "ECMWF-GEFS":
-    loader = LoadDatasets("ECMWF", locs[0], ptlocs[0], init_date)
-    loader_gefs  = LoadDatasets("GEFS",  locs[0], ptlocs[0], init_date)
+    # Load & compute intermediates separately
+    loader_ecmwf, interm_ecmwf = load_intermediate_data(
+        "ECMWF", locs, ptlocs, init_date
+    )
+    loader_gefs, interm_gefs = load_intermediate_data(
+        "GEFS", locs, ptlocs, init_date
+    )
 
-    ds_ecmwf = loader.read_ivt_data()
-    ds_gefs  = loader_gefs.read_ivt_data()
+    # Align and subtract
+    interm_ecmwf, interm_gefs = xr.align(interm_ecmwf, interm_gefs, join="exact")
+    intermediate = interm_ecmwf - interm_gefs
 
-    # Align explicitly to be safe
-    print(ds_ecmwf)
-    print(ds_gefs)
-    ds_ecmwf, ds_gefs = xr.align(ds_ecmwf, ds_gefs, join="exact")
-
-    ds_full = ds_ecmwf - ds_gefs
+    # Choose one loader to own the differenced data
+    loader = loader_ecmwf
+    loader.intermediate = intermediate   # <-- THIS is the key line
 
 else: ## all other model choices
-    # We temporarily initialize with dummy loc/ptloc; these get updated later
-    loader = LoadDatasets(model, locs[0], ptlocs[0], init_date)
-
-    print("Reading IVT dataset once...")
-    ds_full = loader.read_ivt_data()         # <-- cached internally & reused everywhere
-    print("Elapsed:", datetime.now() - startTime)
+    loader, intermediate = load_intermediate_data(model, locs, ptlocs, init_date)
 
 
 # Only load precipitation dataset once if the model is GEFS or ECMWF
@@ -155,18 +172,8 @@ if model in ("ECMWF", "GEFS"):
     ds_ivt_mean = loader.calc_ivt_mean_for_vector_plots()
     print("Elapsed:", datetime.now() - startTime)
 
-print("Computing intermediate products once")
-# compute intermediate products once (lazy dask)
-intermediate = loader.compute_intermediate_products(
-    ds=ds_full,
-    thresholds=[100,150,250,500,750,1000],
-    compute=False,   # set False to defer compute to a dask cluster
-    chunking={'ensemble': -1, 'forecast_hour': 168, 'lat': 200, 'lon': 200}
-)
-print("Elapsed:", datetime.now() - startTime)
-
 # then for each ptloc just extract and save a small netcdf
-print("Extracting ptlocs to save as intermediate data...")
+print("Extracting ptlocs to save as netcdf..")
 for loc, ptloc in zip(locs, ptlocs):
     loader.extract_points_from_intermediate(
         loc=loc,
@@ -176,7 +183,7 @@ for loc, ptloc in zip(locs, ptlocs):
     )
 print("Elapsed:", datetime.now() - startTime)
 # you can now free memory and later load the small per-ptloc netCDF for plotting
-del ds_full, intermediate
+del intermediate
 
 # ================================================================
 # 2. Load and Plot Intermediate Data
@@ -242,8 +249,9 @@ for i, (loc, ori, ptloc) in enumerate(zip(locs, oris, ptlocs)):
 # ================================================================
 # 3. Final Cleanup After Workflow Completes
 # ================================================================
-del ds_ivt_mean
-del ds_qpf
+if model in ("ECMWF", "GEFS"):
+    del ds_ivt_mean
+    del ds_qpf
 
 print('Removing tmp intermediate data files...') 
 # Specify the directory and the pattern
