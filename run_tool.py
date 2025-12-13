@@ -152,7 +152,7 @@ print("Elapsed:", datetime.now() - startTime)
 # then for each ptloc just extract and save a small netcdf
 print("Extracting ptlocs to save as intermediate data...")
 for loc, ptloc in zip(locs, ptlocs):
-    loader.extract_points_from_intermediate_zarr(
+    loader.extract_points_from_intermediate(
         loc=loc,
         ptloc=ptloc,
         out_nc_path=f"data/tmp/intermediate_{model}_{init_date}_{loc}_{ptloc}.nc",
