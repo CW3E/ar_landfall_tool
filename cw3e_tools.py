@@ -354,7 +354,7 @@ class LoadDatasets:
 
         if out_zarr_path is None:
             out_zarr_path = f"data/tmp/ivt_intermediate_{self.forecast}_{self.model_init_date}.zarr"
-
+        print('Chunking data...')
         # sensible chunking defaults (tweak for your machine)
         if chunking is None:
             chunking = {}
@@ -370,7 +370,8 @@ class LoadDatasets:
 
         # Re-chunk dataset for efficient reductions
         ds = ds.chunk(chunking)
-
+        
+        print('Computing thresholds and duration...')
         # Compute data_size (number of non-missing ensembles) per (forecast_hour, lat, lon)
         ivt = ds['IVT']
         if 'ensemble' not in ivt.dims:
@@ -412,7 +413,7 @@ class LoadDatasets:
         probability = probability.assign_coords(threshold=threshold_coord)
         duration = duration.assign_coords(threshold=threshold_coord)
 
-
+        print('Calculating ensemble means...')
         # Ensemble means for u, v, ivt (reduce along ensemble)
         ensemble_mean_ivt = ds['IVT'].where(data_size >= self.datasize_min).mean(dim='ensemble')
         ensemble_mean_u = ds['uIVT'].where(data_size >= self.datasize_min).mean(dim='ensemble')
@@ -427,6 +428,7 @@ class LoadDatasets:
         control = ds['IVT'].sel(ensemble=0)
 
         # Assemble intermediate dataset
+        print('Assemble intermediate dataset...')
         # Align dims: probability dims (threshold, forecast_hour, lat, lon) but we applied mean(dim='ensemble') so it is (threshold, forecast_hour, lat, lon)
         # To pack into intermediate dataset consistent with your previous structure:
         # We'll aggregate probability across forecast_hour by taking max or keep forecast_hour dimension? Your prior code produced prob shape (forecast_hour, location)
@@ -449,7 +451,8 @@ class LoadDatasets:
             "model_init_date": self.model_init_date,
             "thresholds": thresholds
         })
-
+        
+        print('Writing to ZARR...')
         # Optionally set compressor on each variable via encoding when writing, or leave to xarray default
         # Ensure output dir exists
         out_dir = os.path.dirname(out_zarr_path)
