@@ -389,8 +389,6 @@ class LoadDatasets:
         # First sum over forecast_hour: dims (threshold, ensemble, lat, lon) -> then mean over ensemble
         # We want duration per (threshold, lat, lon) aggregated across forecast_hour.
         duration = mask.sum(dim='forecast_hour') * duration_multiplier  # dims (threshold, ensemble, lat, lon)
-        # compute duration as mean across ensemble after valid_mask is applied:
-        duration = duration.mean(dim='ensemble')  # dims: (threshold, lat, lon)
         
         valid_loc = data_size.max(dim='forecast_hour') >= self.datasize_min  # dims (lat, lon)
         # Broadcast valid_loc to probability and duration (threshold, lat, lon)
@@ -444,7 +442,7 @@ class LoadDatasets:
 
         intermediate = xr.Dataset({
             "probability": probability,               # dims: (threshold, forecast_hour, lat, lon)
-            "duration": duration,                     # dims: (threshold, lat, lon)
+            "duration": duration,                     # (threshold, ensemble, lat, lon) 
             "ensemble_mean": ensemble_mean_ivt,       # dims: (forecast_hour?, lat, lon) -> ensemble reduced; here we averaged across ensemble but kept forecast_hour
             "u": u_norm,                              # dims: same as ensemble_mean
             "v": v_norm,                              # dims: same as ensemble_mean
