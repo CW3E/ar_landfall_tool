@@ -167,10 +167,13 @@ if model == "ECMWF-GEFS":
     interm_ecmwf = interm_ecmwf.sortby("lat")
     interm_gefs  = interm_gefs.sortby("lat")
 
-    print(interm_ecmwf)
-    print(interm_gefs)
     interm_ecmwf, interm_gefs = xr.align(interm_ecmwf, interm_gefs, join="exact")
     intermediate = interm_ecmwf - interm_gefs
+    
+    intermediate.attrs.update({
+    "model_init_date": interm_ecmwf.attrs.get("model_init_date"),
+    "source_forecast": "ECMWF - GEFS",
+})
 
     # Choose one loader to own the differenced data
     loader = loader_ecmwf
