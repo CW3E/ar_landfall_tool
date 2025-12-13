@@ -151,6 +151,8 @@ if model == "ECMWF-GEFS":
     )
 
     # Align and subtract
+    print(interm_ecmwf)
+    print(interm_gefs)
     interm_ecmwf, interm_gefs = xr.align(interm_ecmwf, interm_gefs, join="exact")
     intermediate = interm_ecmwf - interm_gefs
 
