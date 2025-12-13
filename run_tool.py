@@ -162,6 +162,10 @@ if model == "ECMWF-GEFS":
 
     interm_ecmwf = interm_ecmwf.sel(forecast_hour=common_hours)
     interm_gefs  = interm_gefs.sel(forecast_hour=common_hours)
+    
+    ## make sure the lats are sorted the same
+    interm_ecmwf = interm_ecmwf.sortby("lat")
+    interm_gefs  = interm_gefs.sortby("lat")
 
     print(interm_ecmwf)
     print(interm_gefs)
@@ -170,7 +174,7 @@ if model == "ECMWF-GEFS":
 
     # Choose one loader to own the differenced data
     loader = loader_ecmwf
-    loader.intermediate = intermediate   # <-- THIS is the key line
+    loader.intermediate = intermediate
 
 else: ## all other model choices
     loader, intermediate = load_intermediate_data(model, locs, ptlocs, init_date)
