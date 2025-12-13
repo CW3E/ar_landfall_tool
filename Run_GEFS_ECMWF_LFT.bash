@@ -67,7 +67,7 @@ echo $filename" ready for processing"
 date=`date`
 echo "STARTING MAKING LFTs at "$date
 
-singularity exec --bind /data:/data -e a/data/projects/operations/LandfallTools/ar_landfall_tool/envs/r_landfall_tool.sif /opt/conda/bin/python /data/projects/operations/LandfallTools/ar_landfall_tool/run_tool.py "ECMWF-GEFS" "$yyyy$mm$dd$hh"
+apptainer exec -e --bind /data:/data /data/projects/operations/LandfallTools/ar_landfall_tool/envs/ar_landfall_tool.2025.12.12.sif python /data/projects/operations/LandfallTools/ar_landfall_tool/run_tool.py "ECMWF-GEFS" "$yyyy$mm$dd$hh"
 
 
 cd /data/projects/operations/LandfallTools/figs/US-west

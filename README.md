@@ -14,14 +14,14 @@ To run all three regions with a singularity container:
 
 ```bash
 ## runs plots for GEFS
-singularity exec --bind /data:/data,/home:/home,/work:/work,/common:/common -e /data/projects/operations/LandfallTools/ar_landfall_tool/envs/ar_landfall_tool.sif /opt/conda/bin/python /data/projects/operations/LandfallTools/ar_landfall_tool/run_tool.py "GEFS" "YYYYMMDDHH"
+apptainer exec -e --bind /data:/data /data/projects/operations/LandfallTools/ar_landfall_tool/envs/ar_landfall_tool.2025.12.12.sif python /data/projects/operations/LandfallTools/ar_landfall_tool/run_tool.py "GEFS" "YYYYMMDDHH"
 
 ## runs plots for ECWMF
-singularity exec --bind /data:/data,/home:/home,/work:/work,/common:/common -e /data/projects/operations/LandfallTools/ar_landfall_tool/envs/ar_landfall_tool.sif /opt/conda/bin/python /data/projects/operations/LandfallTools/ar_landfall_tool/run_tool.py "ECMWF" "YYYYMMDDHH"
+apptainer exec -e --bind /data:/data /data/projects/operations/LandfallTools/ar_landfall_tool/envs/ar_landfall_tool.2025.12.12.sif python /data/projects/operations/LandfallTools/ar_landfall_tool/run_tool.py "ECMWF" "YYYYMMDDHH"
 
 ## runs plots for W-WRF
-singularity exec --bind /data:/data,/home:/home,/work:/work,/common:/common -e /data/projects/operations/LandfallTools/ar_landfall_tool/envs/ar_landfall_tool.sif /opt/conda/bin/python /data/projects/operations/LandfallTools/ar_landfall_tool/run_tool.py "W-WRF" "YYYYMMDDHH"
+apptainer exec -e --bind /data:/data /data/projects/operations/LandfallTools/ar_landfall_tool/envs/ar_landfall_tool.2025.12.12.sif python /data/projects/operations/LandfallTools/ar_landfall_tool/run_tool.py "W-WRF" "YYYYMMDDHH"
 
 ## runs plots for ECMWF-GEFS
-singularity exec --bind /data:/data,/home:/home,/work:/work,/common:/common -e /data/projects/operations/LandfallTools/ar_landfall_tool/envs/ar_landfall_tool.sif /opt/conda/bin/python /data/projects/operations/LandfallTools/ar_landfall_tool/run_tool.py "ECMWF-GEFS" "YYYYMMDDHH"
+apptainer exec -e --bind /data:/data /data/projects/operations/LandfallTools/ar_landfall_tool/envs/ar_landfall_tool.2025.12.12.sif python /data/projects/operations/LandfallTools/ar_landfall_tool/run_tool.py "ECMWF-GEFS" "YYYYMMDDHH"
 ```
