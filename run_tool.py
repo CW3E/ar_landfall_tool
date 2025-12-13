@@ -12,6 +12,7 @@ for different IVT thresholds and coastal/foothill/inland points.
 import os
 import sys
 import xarray as xr
+import numpy as np
 from datetime import datetime
 import traceback
 
