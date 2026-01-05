@@ -26,7 +26,6 @@ from ar_landfall_tool_IVT_mag import landfall_tool_IVT_magnitude
 # ---------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------
-
 MODEL_CONFIG = {
     "ECMWF": {
         "locs": ['US-west']*4 + ['SAK']*3 + ['AK']*2,

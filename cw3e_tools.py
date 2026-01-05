@@ -380,6 +380,7 @@ class LoadDatasets:
         ivt = ds['IVT']
         if 'ensemble' not in ivt.dims:
             raise KeyError("IVT must have 'ensemble' dimension for these computations.")
+
         data_size = ivt.count(dim='ensemble')  # (forecast_hour, lat, lon)
         valid_mask = data_size >= self.datasize_min  # boolean (forecast_hour, lat, lon)
 
@@ -391,15 +392,20 @@ class LoadDatasets:
         # mask shape: (threshold, forecast_hour, ensemble, lat, lon)
         mask = ivt >= thr_da
 
-        # Probability: fraction of ensembles >= threshold -> mean over ensemble axis
-        # result dims: (threshold, forecast_hour, lat, lon)
-        probability = mask.mean(dim='ensemble')  # lazy
-
-        # Duration: count of forecast_hour where condition true -> sum over forecast_hour then * multiplier
-        # First sum over forecast_hour: dims (threshold, ensemble, lat, lon) -> then mean over ensemble
-        # We want duration per (threshold, lat, lon) aggregated across forecast_hour.
-        duration = mask.sum(dim='forecast_hour') * duration_multiplier  # dims (threshold, ensemble, lat, lon)
+        # -------------------- Probability --------------------
+        # mask: (threshold, forecast_hour, ensemble, lat, lon)
+        mask_sum = mask.sum(dim='ensemble')  # shape: (threshold, forecast_hour, lat, lon)
         
+        # probability: divide by number of valid ensembles at each (forecast_hour, lat, lon)
+        # xarray will broadcast threshold dimension automatically
+        probability = mask_sum / data_size
+       
+        # -------------------- Duration --------------------
+        # Duration: number of forecast hours condition is true, then multiplied by multiplier
+        # sum over forecast_hour
+        duration = mask.sum(dim='forecast_hour') * duration_multiplier  # shape: (threshold, ensemble, lat, lon)
+
+       
         if self.forecast == 'W-WRF':
             duration = duration.mean(dim='ensemble')
         
