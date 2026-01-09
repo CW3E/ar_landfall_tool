@@ -133,7 +133,7 @@ print("===============================================\n")
 # ================================================================
 print('Removing tmp intermediate data files...') 
 # Specify the directory and the pattern
-tmp_directory = "/data/projects/operations/LandfallTools/ar_landfall_tool/data/tmp/"
+tmp_directory = f"/data/projects/operations/LandfallTools/ar_landfall_tool/data/tmp/{model}/"
 clear_tmp_dir(tmp_directory)
 
 
@@ -199,7 +199,7 @@ for loc, ptloc in zip(locs, ptlocs):
     loader.extract_points_from_intermediate(
         loc=loc,
         ptloc=ptloc,
-        out_nc_path=f"data/tmp/intermediate_{model}_{init_date}_{loc}_{ptloc}.nc",
+        out_nc_path=f"data/tmp/{model}/intermediate_{model}_{init_date}_{loc}_{ptloc}.nc",
         save_nc=True
     )
 print("Elapsed:", datetime.now() - startTime)
@@ -217,7 +217,7 @@ for i, (loc, ori, ptloc) in enumerate(zip(locs, oris, ptlocs)):
 
     try:
 
-        ds_pt = xr.open_dataset(f"data/tmp/intermediate_{model}_{init_date}_{loc}_{ptloc}.nc")
+        ds_pt = xr.open_dataset(f"data/tmp/{model}/intermediate_{model}_{init_date}_{loc}_{ptloc}.nc")
 
         # Save or plot results
         # -----------------------------------------
@@ -275,7 +275,7 @@ if model in ("ECMWF", "GEFS"):
 
 print('Removing tmp intermediate data files...') 
 # Specify the directory and the pattern
-tmp_directory = "/data/projects/operations/LandfallTools/ar_landfall_tool/data/tmp/"
+tmp_directory = f"/data/projects/operations/LandfallTools/ar_landfall_tool/data/tmp/{model}/"
 clear_tmp_dir(tmp_directory)
 
 print("\n===============================================")
