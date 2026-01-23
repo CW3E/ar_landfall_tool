@@ -184,7 +184,7 @@ else: ## all other model choices
 
 # Only load precipitation dataset once if the model is GEFS or ECMWF
 # These are needed for the vector plots, which we do not compute for W-WRF or ECMWF-GEFS
-if model in ("ECMWF", "GEFS"):
+if model in ("ECMWF", "GEFS", "W-WRF"):
     print("Loading QPF once...")
     ds_qpf = loader.load_prec_QPF_dataset()  # optional depending on workflow
     print("Elapsed:", datetime.now() - startTime)
@@ -248,7 +248,7 @@ for i, (loc, ori, ptloc) in enumerate(zip(locs, oris, ptlocs)):
             print(f" Vector | {thres}")
             print("--------------------------------------------")
             print("Elapsed:", datetime.now() - startTime)
-            if model in ("ECMWF", "GEFS"):
+            if model in ("ECMWF", "GEFS", "W-WRF"):
                 vector = landfall_tool_vector(
                     ds_pt=ds_pt, ds=ds_ivt_mean, prec=ds_qpf,
                     loc=loc, ptloc=ptloc,

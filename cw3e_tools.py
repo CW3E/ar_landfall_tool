@@ -242,7 +242,7 @@ class LoadDatasets:
             print(date, hr)
             # shell=True kept for legacy usage in original code; consider removing for safety later
             subprocess.check_call(["download_QPF.sh", date, hr], shell=True)
-        else:
+        elif self.forecast == 'ECMWF':
             mmdyhr_init = dt_init.strftime('%m%d%H')
             date2 = dt_init + datetime.timedelta(days=7)
             date2 = date2.strftime('%m%d%H')
@@ -280,7 +280,7 @@ class LoadDatasets:
                     lons = np.arange(-180., 180.25, 0.25)
                     var_dict = {'tp': (['lat', 'lon'], np.zeros((len(lats), len(lons))))}
                     prec = xr.Dataset(var_dict, coords={'lat': (['lat'], lats), 'lon': (['lon'], lons)})
-        else:
+        elif self.forecast == 'ECMWF':
             # ECMWF/WWRF path (unchanged logic, but cached)
             self.download_QPF_dataset()
             var_lst = ['u10', 'lsm', 'msl', 'd2m', 'z', 't2m', 'stl1', 'stl2', 'stl3', 'stl4',
@@ -294,6 +294,16 @@ class LoadDatasets:
             )
             prec = ds['tp'] * 39.3701  # meters -> inches
             prec = prec.rename({'longitude': 'lon', 'latitude': 'lat'})
+
+        elif self.forecast == 'W-WRF':
+            fname = f'/data/downloaded/WWRF-NRT/2025-2026/WWRF_QPF/{self.model_init_date}/Ensemble/QPF_WWRF_{self.model_init_date}.nc'
+            ds = xr.open_dataset(fname)
+            ds = ds.isel(forecast_hour=-1)
+            ds = ds.drop_vars(["SNOW"])
+            ds['QPF'] = ds['QPF'] / 25.4
+            ds['QPF'] = ds['QPF'].mean('ensembles')
+            ds = ds.set_coords(["lat2d", "lon2d"])
+            prec = ds['QPF']
 
         LoadDatasets._cached_prec[key] = prec
         return prec
@@ -356,8 +366,6 @@ class LoadDatasets:
         if thresholds is None:
             thresholds = [100, 150, 250, 500, 750, 1000]
 
-#         if out_zarr_path is None:
-#             out_zarr_path = f"data/tmp/ivt_intermediate_{self.forecast}_{self.model_init_date}.zarr"
         print('Chunking data...')
         # sensible chunking defaults (tweak for your machine)
         if chunking is None:
@@ -405,9 +413,9 @@ class LoadDatasets:
         # sum over forecast_hour
         duration = mask.sum(dim='forecast_hour') * duration_multiplier  # shape: (threshold, ensemble, lat, lon)
 
-       
-        if self.forecast == 'W-WRF':
-            duration = duration.mean(dim='ensemble')
+        ## This was to reduce data size when we did not need it.
+        # if self.forecast == 'W-WRF':
+        #     duration = duration.mean(dim='ensemble')
         
         valid_loc = data_size.max(dim='forecast_hour') >= self.datasize_min  # dims (lat, lon)
         # Broadcast valid_loc to probability and duration (threshold, lat, lon)

@@ -326,13 +326,17 @@ class landfall_tool_vector:
         ## Add 7-D QPF
         cmap, norm, bnds = cw3e.cmap('brian_qpf')
         self.qpflevs = bnds
-        self.qpf = ax.contourf(self.prec.lon, self.prec.lat, self.prec.values,
-                         cmap=cmap, norm=norm, levels=self.qpflevs, alpha=0.8, transform=datacrs)
+        if (self.forecast == "GEFS") | (self.forecast == "ECMWF"):
+            self.qpf = ax.contourf(self.prec.lon, self.prec.lat, self.prec.values,
+                             cmap=cmap, norm=norm, levels=self.qpflevs, alpha=0.8, transform=datacrs)
+        elif self.forecast == "W-WRF":
+            self.qpf = ax.contourf(self.prec.lon2d, self.prec.lat2d, self.prec.values,
+                             cmap=cmap, norm=norm, levels=self.qpflevs, alpha=0.8, transform=datacrs)
 
         Q = ax.quiver(self.ds.lon, self.ds.lat, self.ds.uIVT, self.ds.vIVT, transform=datacrs,
-                      color='k', regrid_shape=15,
-                      angles='xy', scale_units='xy', scale=250, units='xy')
-
+              color='k', regrid_shape=15,
+              angles='xy', scale_units='xy', scale=250, units='xy')
+    
         # Add map features (continents and country borders)
         # ax.add_feature(cfeature.LAND, facecolor='0.9')
         ax.add_feature(cfeature.BORDERS, edgecolor='0.4', linewidth=0.4)
