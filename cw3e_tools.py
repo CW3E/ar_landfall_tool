@@ -241,12 +241,13 @@ class LoadDatasets:
         if self.forecast == 'GEFS':
             print(date, hr)
             # shell=True kept for legacy usage in original code; consider removing for safety later
-            subprocess.check_call(["download_QPF.sh", date, hr], shell=True)
+            subprocess.check_call(["/data/projects/operations/LandfallTools/ar_landfall_tool/download_QPF.sh", date, hr])
         elif self.forecast == 'ECMWF':
             mmdyhr_init = dt_init.strftime('%m%d%H')
             date2 = dt_init + datetime.timedelta(days=7)
             date2 = date2.strftime('%m%d%H')
-            fpath = f'/data/downloaded/Forecasts/ECMWF/NRT_data/{date}{hr}/'
+#            fpath = f'/data/downloaded/Forecasts/ECMWF/NRT_data/{date}{hr}/'
+            fpath = f'/data/projects/external_datasets/ECMWF_HRes/processed/{date}{hr}/'
             fname = f'S1D{mmdyhr_init}00{date2}001'
             shutil.copy(fpath + fname, os.path.join(self.path_to_out, 'precip_ECMWF'))
 
