@@ -39,7 +39,7 @@ import cmocean.cm as cmo
 
 # import personal modules
 import cw3ecmaps as cw3e
-from cw3e_tools import ivt_colors, plot_terrain, plot_cw3e_logo, get_every_other_vector, myround, set_cw3e_font
+from cw3e_tools import ivt_colors, plot_terrain, plot_cw3e_logo, get_every_other_vector, myround, set_cw3e_font, reduce_png_colors
 
 
 class landfall_tool_IVT_magnitude:
@@ -344,11 +344,31 @@ class landfall_tool_IVT_magnitude:
         outpath = self.path_to_out+f'{self.loc}/'
         os.makedirs(outpath, exist_ok=True)
         fname1 = outpath+f'{self.forecast}_LandfallTool_{self.mag_type}_{self.ptloc}_current'
-        fname2 = outpath+f'{self.forecast}_LandfallTool_{self.mag_type}_{self.ptloc}_{self.date_string}'
+#        fname2 = outpath+f'{self.forecast}_LandfallTool_{self.mag_type}_{self.ptloc}_{self.date_string}'
+        if self.forecast == 'GEFS':
+         model_id = 'GEFS_50'
+        elif self.forecast == 'ECMWF':
+         model_id = 'ECMWF_ENS'
+        elif self.forecast == 'ECMWF-GEFS':
+         model_id = 'ECMWF_ENS-GEFS_50'
+        elif self.forecast == 'W-WRF':
+         model_id = 'WWRF_ens'
+        else:
+         print(f'ERROR SETTING MODEL ID: {self.forecast}')
+        if self.mag_type == 'ensemble_mean':
+         type = 'mean'
+        else:
+         type = self.mag_type
+        if self.loc == 'US-west':
+         domain = self.ptloc
+        else:
+         domain = f'{self.loc}{self.ptloc}'
+        fname2 = outpath+f'landfalltool_ivt{type}__v1__{model_id}__{domain}__{self.date_string}__1__F384'
+
         fmt = 'png'
 
         ## set font
-        current_dpi=300 #recommended dpi of 600
+        current_dpi=200 #recommended dpi of 600
         base_dpi=100
         scaling_factor = (current_dpi / base_dpi)**0.13
         set_cw3e_font(current_dpi, scaling_factor)
@@ -449,7 +469,8 @@ class landfall_tool_IVT_magnitude:
             ax = plot_cw3e_logo(ax, orientation='horizontal')
 
 
-        fig.savefig('%s.%s' %(fname1, fmt), bbox_inches='tight', dpi=fig.dpi) # save generic "current"
+#        fig.savefig('%s.%s' %(fname1, fmt), bbox_inches='tight', dpi=fig.dpi) # save generic "current"
         fig.savefig('%s.%s' %(fname2, fmt), bbox_inches='tight', dpi=fig.dpi) # save with date/time
+        reduce_png_colors(input_fname=f"{fname2}.{fmt}", output_fname=f"{fname2}.{fmt}")
         # close figure
         plt.close(fig)
