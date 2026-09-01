@@ -163,6 +163,14 @@ class LoadDatasets:
             self.ensemble_name = 'West-WRF'
             self.datasize_min = 50.0
 
+        elif self.forecast == 'ECMWF_archive':
+            self.fpath = '/data/projects/case_studies/comp_test/case_study_1995/ForecastTools/data/'
+            self.fname = os.path.join(self.fpath,
+                                      self.model_init_date,
+                                      f'ECMWF_EPS_IVT_{self.model_init_date}.nc')
+            self.ensemble_name = 'ECMWF'
+            self.datasize_min = 15.0
+
         else:
             raise ValueError("Forecast product not available! Choose GEFS, ECMWF, ECMWF-GEFS, or W-WRF.")
 
@@ -194,27 +202,69 @@ class LoadDatasets:
                 ds = ds.rename({'longitude': 'lon'})
             if 'latitude' in ds.coords and 'lat' not in ds.coords:
                 ds = ds.rename({'latitude': 'lat'})
+        print(ds)
 
         # Model-specific adjustments
-        if self.forecast == 'ECMWF':
-            if 'forecast_time' in ds.dims:
-                ds = ds.rename_dims({'forecast_time': 'forecast_hour'})
-
-            if 'forecast_times' in ds:
+        if self.forecast in ('ECMWF', 'ECMWF_archive'):
+        
+            print("Modifying ECMWF forecast time data")
+        
+            # --------------------------------------------------
+            # Normalize forecast time -> forecast_hour
+            # --------------------------------------------------
+        
+            # Case 1:
+            # forecast_time is both a dimension and coordinate
+            #
+            # e.g.
+            #   * forecast_time (forecast_time) int32 0 12 24 ...
+            #
+            # rename() handles both at once.
+            if 'forecast_time' in ds.coords:
+                ds = ds.rename({'forecast_time': 'forecast_hour'})
+        
+            # Case 2:
+            # forecast_times is a separate variable containing
+            # the forecast-hour values.
+            #
+            # This is the structure in your newer ECMWF files.
+            elif 'forecast_times' in ds:
+                if 'forecast_time' in ds.dims:
+                    ds = ds.rename_dims({'forecast_time': 'forecast_hour'})
+        
                 ds = ds.assign_coords(
                     forecast_hour=ds['forecast_times'].values
                 )
+        
                 ds = ds.drop_vars('forecast_times')
-            # historic: for years > 2020 forecast_hour was stored differently
-            try:
-                dt_init = datetime.datetime.strptime(self.model_init_date, "%Y%m%d%H")
-                if int(dt_init.strftime('%Y')) < 2020 and 'forecast_hour' in ds:
-                    print("Modifying forecast hours since year is less than 2020")
-                    ds['forecast_hour'] = ds['forecast_hour'] * 3
-            except Exception:
-                pass
-            
-            ds = ds.sel(lon=slice(-170, -105)) ## subset to match GEFS
+        
+            # Sanity check
+            if 'forecast_hour' not in ds.coords:
+                raise ValueError(
+                    f"Could not create forecast_hour coordinate for "
+                    f"{self.forecast} dataset. "
+                    f"Dims: {list(ds.dims)}, "
+                    f"Coords: {list(ds.coords)}"
+                )
+        
+            # --------------------------------------------------
+            # Historic ECMWF forecast-hour adjustment
+            # --------------------------------------------------
+        
+            dt_init = datetime.datetime.strptime(
+                self.model_init_date,
+                "%Y%m%d%H"
+            )
+        
+            if dt_init.year < 2020:
+                print("Modifying forecast hours since year is less than 2020")
+                ds['forecast_hour'] = ds['forecast_hour'] * 3
+        
+            # --------------------------------------------------
+            # Match GEFS longitude domain
+            # --------------------------------------------------
+        
+            ds = ds.sel(lon=slice(-170, -105))
 
         if self.forecast == 'W-WRF':
             if 'ensembles' in ds:

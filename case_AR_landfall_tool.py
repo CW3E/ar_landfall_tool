@@ -3,48 +3,200 @@
 Filename:    case_AR_landfall_tool.py
 Author:      Deanna Nash, dnash@ucsd.edu
 Description: Run the AR landfall tool for a select case. User to update the filepath and figpath.
+/data/projects/case_studies/comp_test/case_study_1995/ForecastTools/data/1995030512/ECMWF_EPS_IVT_1995030512.nc (plus Mach 6 and 7).
 """
 import pandas as pd
-from cw3e_tools import load_datasets
+import os
+import sys
+import xarray as xr
+import numpy as np
+from datetime import datetime
+import traceback
+
+from utils import clear_tmp_dir
+from cw3e_tools import LoadDatasets
 from ar_landfall_tool_contour import landfall_tool_contour
 from ar_landfall_tool_IVT_mag import landfall_tool_IVT_magnitude
 
 # --- USER UPDATE ---
 # Create date range every 24 hours (1 day)
 dates = pd.date_range(
-    start="1996-12-25 12:00",
-    end="1997-01-05 12:00",
+    start="1995-03-05 12:00",
+    end="1995-03-07 12:00",
     freq="24H"
 )
 
 # Format as YYYYMMDDHH
 date_lst = dates.strftime("%Y%m%d%H").tolist()
+model="ECMWF_archive"
 
-model = 'ECMWF' # model name (WWRF, ECMWF, or GEFS)
-for date in date_lst:
-    datadir = f'/data/projects/case_studies/comp_test/case_study_1997/ForecastTools/data/{date}/' # the dir where your IVT nc file is
-    fname = f'ECMWF_EPS_IVT_{date}.nc' # the name of the IVT .nc file
-    figpath = f'/home/dnash/repos/ar_landfall_tool/figs/{date}/' # the location where you want the figs to save
+# ---------------------------------------------------------------------
+# Configuration
+# ---------------------------------------------------------------------
 
-    loc_lst = ['US-west']*3 # the domain
-    ori_lst = ['latitude']*3 # latitude or longitude (longitude only for Alaska)
-    ptloc_lst = ['coast', 'foothills', 'inland'] # point location - coast, foothills, or inland only
+MODEL_CONFIG = {
+    "ECMWF_archive": {
+        "locs": ['US-west']*3,
+        "oris": ['latitude']*3,
+        "ptlocs": ['coast', 'foothills', 'inland',]
+    },
+}
+
+# ---------------------------------------------------------------------
+# Helper functions
+# ---------------------------------------------------------------------
+def plot_magnitudes(ds_pt, loc, ptloc, model, orientation, path_to_out):
+    """Plot control and ensemble mean magnitude figures."""
+    for mag_type in ["ensemble_mean"]:
+        print("\n--------------------------------------------")
+        print(f" Magnitude | {mag_type}")
+        print("--------------------------------------------")
+        print("Elapsed:", datetime.now() - startTime)
+        fig = landfall_tool_IVT_magnitude(
+            ds_pt=ds_pt,
+            loc=loc,
+            ptloc=ptloc,
+            forecast=model,
+            mag_type=mag_type,
+            orientation=orientation,
+            path_to_out=path_to_out,
+        )
+        fig.create_figure()
+
+
+def threshold_list(ptloc):
+    """Thresholds differ for 'intwest'."""
+    return [100, 150, 250, 500, 750] if ptloc == "intwest" else \
+           [150, 250, 500, 750]
+
+def load_intermediate_data(model, locs, ptlocs, init_date):
+    # We temporarily initialize with dummy loc/ptloc; these get updated later
+    loader = LoadDatasets(model, locs[0], ptlocs[0], init_date)
+
+    print("Reading IVT dataset once...")
+    ds_full = loader.read_ivt_data()         # <-- cached internally & reused everywhere
+    print("Elapsed:", datetime.now() - startTime)
+    
+    print("Computing intermediate products once")
+    # compute intermediate products once (lazy dask)
+    intermediate = loader.compute_intermediate_products(
+        ds=ds_full,
+        thresholds=[100,150,250,500,750,1000],
+        chunking={'ensemble': -1, 'forecast_hour': 168, 'lat': 200, 'lon': 200}
+    )
+    print("Elapsed:", datetime.now() - startTime)
+    
+    return loader, intermediate
+
+# ---------------------------------------------------------------------
+# Main Script
+# ---------------------------------------------------------------------
+
+startTime = datetime.now()
+
+# -------------------------------
+# Inputs passed to this script
+# -------------------------------
+if model not in MODEL_CONFIG:
+    raise ValueError(f"Unknown model: {model}")
+
+cfg = MODEL_CONFIG[model]
+locs, oris, ptlocs = cfg["locs"], cfg["oris"], cfg["ptlocs"]
+
+prec = None
+
+# ================================================================
+# 0. Remove tmp files
+# ================================================================
+print('Removing tmp intermediate data files...') 
+# Specify the directory and the pattern
+tmp_directory = f"/home/dnash/repos/ar_landfall_tool/data/tmp/{model}/"
+clear_tmp_dir(tmp_directory)
+
+
+for init_date in date_lst:
+
+    startTime = datetime.now()
+
+    print("\n===============================================")
+    print(f" Running AR Landfall Tool for {model} {init_date}")
+    print("===============================================\n")
+
+    path_to_out = f'/home/dnash/repos/ar_landfall_tool/figs/{init_date}/' # the location where you want the figs to save
 
     # --- load data and create plots --- 
     # for each model and point location, load the data, then calculate each metric
-    for i, (loc, ori, ptloc) in enumerate(zip(loc_lst, ori_lst, ptloc_lst)):
-        print(model, loc, ori, ptloc)
-        s = load_datasets(model, loc, ptloc, fname=datadir+fname)
-        ds_pt, ds = s.calc_ivt_vars()
+    loader, intermediate = load_intermediate_data(model, locs, ptlocs, init_date)
 
-        ## plot ensemble mean magnitude plots (this doesn't need to loop through thresholds)
-        s = landfall_tool_IVT_magnitude(ds_pt=ds_pt, loc=loc, ptloc=ptloc, forecast=model, mag_type='ensemble_mean', orientation=ori,
-                                       path_to_out=figpath)
-        s.create_figure()
+    # then for each ptloc just extract and save a small netcdf
+    print("Extracting ptlocs to save as netcdf..")
+    print(intermediate)
+    for loc, ptloc in zip(locs, ptlocs):
+        loader.extract_points_from_intermediate(
+            loc=loc,
+            ptloc=ptloc,
+            out_nc_path=f"/home/dnash/repos/ar_landfall_tool/data/tmp/{model}/intermediate_{model}_{init_date}_{loc}_{ptloc}.nc",
+            save_nc=True
+            )
+    print("Elapsed:", datetime.now() - startTime)
+    # you can now free memory and later load the small per-ptloc netCDF for plotting
+    del intermediate
 
-        threshold_lst = [150, 250, 500, 750]
-        ## plot contour landfall plots (this will loop through all the thresholds)
-        for j, thres in enumerate(threshold_lst):
-            s = landfall_tool_contour(ds_pt=ds_pt, loc=loc, ptloc=ptloc, forecast=model, threshold=thres, orientation=ori,
-                                       path_to_out=figpath)
-            s.create_figure()
+    # ================================================================
+    # 2. Load and Plot Intermediate Data
+    # ================================================================
+    for i, (loc, ori, ptloc) in enumerate(zip(locs, oris, ptlocs)):
+        print("\n--------------------------------------------")
+        print(f" {i+1}/{len(locs)} :: {model} | {loc} | {ptloc}")
+        print("--------------------------------------------")
+        print("Elapsed:", datetime.now() - startTime)
+    
+        try:
+    
+            ds_pt = xr.open_dataset(f"/home/dnash/repos/ar_landfall_tool/data/tmp/{model}/intermediate_{model}_{init_date}_{loc}_{ptloc}.nc")
+    
+            # Save or plot results
+            # -----------------------------------------
+            # Magnitude Plots
+            # -----------------------------------------
+            plot_magnitudes(ds_pt, loc, ptloc, "ECMWF", ori, path_to_out)
+    
+            # -----------------------------------------
+            # Contour + Vector Plots for thresholds
+            # -----------------------------------------
+            for thres in threshold_list(ptloc):
+                print("\n--------------------------------------------")
+                print(f" Contour | {thres}")
+                print("--------------------------------------------")
+                print("Elapsed:", datetime.now() - startTime)
+    
+                # Contour plot
+                contour = landfall_tool_contour(
+                    ds_pt=ds_pt, loc=loc, ptloc=ptloc,
+                    forecast="ECMWF", threshold=thres,
+                    orientation=ori,
+                    path_to_out=path_to_out,
+                )
+                contour.create_figure()
+
+                    # Clean up before next iteration
+            del ds_pt 
+
+        except Exception as e:
+            print(f"\nERROR processing {loc}, {ptloc}: {e}")
+            traceback.print_exc()
+            continue
+
+    # ================================================================
+    # 3. Final Cleanup After Workflow Completes
+    # ================================================================
+    
+    print('Removing tmp intermediate data files...') 
+    # Specify the directory and the pattern
+    tmp_directory = f"/home/dnash/repos/ar_landfall_tool/data/tmp/{model}/"
+    clear_tmp_dir(tmp_directory)
+    
+    print("\n===============================================")
+    print(" Workflow Complete")
+    print(" Total Time:", datetime.now() - startTime)
+    print("===============================================\n")

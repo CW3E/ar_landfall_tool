@@ -182,8 +182,8 @@ else: ## all other model choices
     loader, intermediate = load_intermediate_data(model, locs, ptlocs, init_date)
 
 
-# Only load precipitation dataset once if the model is GEFS or ECMWF
-# These are needed for the vector plots, which we do not compute for W-WRF or ECMWF-GEFS
+# Only load precipitation dataset once if the model is GEFS, ECMWF, or WWRF
+# These are needed for the vector plots, which we do not compute for ECMWF-GEFS
 if model in ("ECMWF", "GEFS", "W-WRF"):
     print("Loading QPF once...")
     ds_qpf = loader.load_prec_QPF_dataset()  # optional depending on workflow
