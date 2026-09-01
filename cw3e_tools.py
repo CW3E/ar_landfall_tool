@@ -266,7 +266,7 @@ class LoadDatasets:
                 "%Y%m%d%H"
             )
         
-            if dt_init.year < 2020:
+            if (dt_init.year < 2020) & (self.forecast == 'ECMWF'):
                 print("Modifying forecast hours since year is less than 2020")
                 ds['forecast_hour'] = ds['forecast_hour'] * 3
         
