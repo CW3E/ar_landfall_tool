@@ -32,6 +32,16 @@ ivt_colors = {'250': (255./255.0, 174./255.0, 0./255.0), # orange
               '1000': (77./255.0, 77./255.0, 77./255.0) # grey
               }
 
+def reduce_png_colors(input_fname, output_fname):
+    img = Image.open(input_fname)
+    quantized = img.quantize(
+            colors=256,
+            method=2,  # FASTOCTREE
+            dither=Image.FLOYDSTEINBERG
+        )
+    quantized.save(output_fname)
+
+
 def plot_terrain(ax, ext):
     fname = '/data/projects/operations/data/ETOPO1_Bed_c_gmt4.grd'
     datacrs = ccrs.PlateCarree()
@@ -337,13 +347,26 @@ class LoadDatasets:
             var_lst = ['u10', 'lsm', 'msl', 'd2m', 'z', 't2m', 'stl1', 'stl2', 'stl3', 'stl4',
                        'swvl4', 'swvl2', 'swvl3', 'sst', 'sp', 'v10', 'sd', 'skt', 'swvl1',
                        'siconc', 'tcwv', 'tcw']
+
             ds = xr.open_dataset(
                 os.path.join(self.path_to_out, 'precip_ECMWF'),
-                drop_variables=var_lst,
-                engine='cfgrib',
-                backend_kwargs={'filter_by_keys': {'typeOfLevel': 'surface'}}
+                engine="cfgrib",
+                backend_kwargs={
+                    "filter_by_keys": {
+                        "shortName": "tp"
+                    },
+                    "indexpath": ""
+                }
             )
-            prec = ds['tp'] * 39.3701  # meters -> inches
+            prec = ds["tp"] * 39.3701
+
+#            ds = xr.open_dataset(
+#                os.path.join(self.path_to_out, 'precip_ECMWF'),
+#                drop_variables=var_lst,
+#                engine='cfgrib',
+#                backend_kwargs={'filter_by_keys': {'typeOfLevel': 'surface'}}
+#            )
+#            prec = ds['tp'] * 39.3701  # meters -> inches
             prec = prec.rename({'longitude': 'lon', 'latitude': 'lat'})
 
         elif self.forecast == 'W-WRF':

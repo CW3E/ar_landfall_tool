@@ -83,25 +83,39 @@ def threshold_list(ptloc):
     return [100, 150, 250, 500, 750] if ptloc == "intwest" else \
            [150, 250, 500, 750]
 
+def renumber_ecmwf_ensemble(ds, model):
+    """ECMWF ensemble comes in as NaN control, then 0-49. Rename to 0-50."""
+    if model != "ECMWF" or "ensemble" not in ds.sizes:
+        return ds
+
+    n_ens = ds.sizes["ensemble"]
+
+    if n_ens == 51:
+        print("Renumbering ECMWF ensemble coordinate: NaN control + 0-49 -> 0-50")
+        return ds.assign_coords(ensemble=np.arange(n_ens))
+
+    print(f"WARNING: ECMWF ensemble has {n_ens} members; leaving coordinate unchanged")
+    return ds
+
+
 def load_intermediate_data(model, locs, ptlocs, init_date):
     # We temporarily initialize with dummy loc/ptloc; these get updated later
     loader = LoadDatasets(model, locs[0], ptlocs[0], init_date)
 
     print("Reading IVT dataset once...")
-    ds_full = loader.read_ivt_data()         # <-- cached internally & reused everywhere
+    ds_full = loader.read_ivt_data()
+    ds_full = renumber_ecmwf_ensemble(ds_full, model)
     print("Elapsed:", datetime.now() - startTime)
-    
+
     print("Computing intermediate products once")
-    # compute intermediate products once (lazy dask)
     intermediate = loader.compute_intermediate_products(
         ds=ds_full,
         thresholds=[100,150,250,500,750,1000],
         chunking={'ensemble': -1, 'forecast_hour': 168, 'lat': 200, 'lon': 200}
     )
     print("Elapsed:", datetime.now() - startTime)
-    
-    return loader, intermediate
 
+    return loader, intermediate
 # ---------------------------------------------------------------------
 # Main Script
 # ---------------------------------------------------------------------

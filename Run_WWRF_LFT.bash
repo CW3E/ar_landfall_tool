@@ -15,8 +15,8 @@ mkdir "/data/downloaded/Forecasts/ARPortal_Archive/WWRF/ensemble/"$yyyy$mm$dd$hh
 
 
 
-rm -f /data/projects/operations/LandfallTools/figs/US-west/W-WRF_LandfallTool*current.png
-rm -f /data/projects/operations/LandfallTools/figs/SAK/W-WRF_LandfallTool*current.png
+rm -f /data/projects/operations/LandfallTools/figs/US-west/W-WRF_LandfallToolcurrent.png
+rm -f /data/projects/operations/LandfallTools/figs/SAK/W-WRF_LandfallToolcurrent.png
 
 
 cd /data/projects/operations/LandfallTools/ar_landfall_tool/
@@ -49,7 +49,7 @@ apptainer exec -e --bind /data:/data /data/projects/operations/LandfallTools/ar_
 cd /data/projects/operations/LandfallTools/figs/US-west
 check=1
 while [ $check != 0 ]; do
-timeout 120 rsync --ignore-missing-args -avih W-WRF_LandfallTool*current.png /data/projects/website/mirror/htdocs/images/wwrf/images/ensemble/LFT/US-west/
+timeout 120 rsync --ignore-missing-args -avih W-WRF_LandfallToolcurrent.png /data/projects/website/mirror/htdocs/images/wwrf/images/ensemble/LFT/US-west/
  check=$?
  if [ $check != 0 ]; then
   echo "Transfer failed"
@@ -60,7 +60,7 @@ done
 cd /data/projects/operations/LandfallTools/figs/SAK/
 check=1
 while [ $check != 0 ]; do
-timeout 120 rsync --ignore-missing-args -avih W-WRF_LandfallTool*current.png /data/projects/website/mirror/htdocs/images/wwrf/images/ensemble/LFT/SAK/
+timeout 120 rsync --ignore-missing-args -avih W-WRF_LandfallToolcurrent.png /data/projects/website/mirror/htdocs/images/wwrf/images/ensemble/LFT/SAK/
  check=$?
  if [ $check != 0 ]; then
   echo "Transfer failed"
@@ -69,9 +69,9 @@ timeout 120 rsync --ignore-missing-args -avih W-WRF_LandfallTool*current.png /da
 done
 
 cd /data/projects/operations/LandfallTools/figs/US-west
-mv "W-WRF_LandfallTool"*$yyyy$mm$dd$hh".png" "/data/downloaded/Forecasts/ARPortal_Archive/WWRF/ensemble/"$yyyy$mm$dd$hh"/US-west"
+mv "W-WRF_LandfallTool"$yyyy$mm$dd$hh".png" "/data/downloaded/Forecasts/ARPortal_Archive/WWRF/ensemble/"$yyyy$mm$dd$hh"/US-west"
 cd /data/projects/operations/LandfallTools/figs/AK
-mv "W-WRF_LandfallTool"*$yyyy$mm$dd$hh".png" "/data/downloaded/Forecasts/ARPortal_Archive/WWRF/ensemble/"$yyyy$mm$dd$hh"/SAK"
+mv "W-WRF_LandfallTool"$yyyy$mm$dd$hh".png" "/data/downloaded/Forecasts/ARPortal_Archive/WWRF/ensemble/"$yyyy$mm$dd$hh"/SAK"
 
 date=`date`
 echo "Finished at "$date

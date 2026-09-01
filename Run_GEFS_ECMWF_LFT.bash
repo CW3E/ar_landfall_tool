@@ -9,15 +9,6 @@ mm=`date -d '-'$lag' hours' -u +%m`
 dd=`date -d '-'$lag' hours' -u +%d`
 hh=`date -d '-'$lag' hours' -u +%H`
 
-mkdir "/data/downloaded/Forecasts/ARPortal_Archive/ECMWF/ensemble/landfall_images/"$yyyy$mm$dd$hh
-mkdir "/data/downloaded/Forecasts/ARPortal_Archive/ECMWF/ensemble/landfall_images/"$yyyy$mm$dd$hh"/US-west/"
-mkdir "/data/downloaded/Forecasts/ARPortal_Archive/ECMWF/ensemble/landfall_images/"$yyyy$mm$dd$hh"/SAK/"
-mkdir "/data/downloaded/Forecasts/ARPortal_Archive/ECMWF/ensemble/landfall_images/"$yyyy$mm$dd$hh"/AK"
-
-rm -f /data/projects/operations/LandfallTools/figs/US-west/ECMWF-GEFS_LandfallTool*current.png
-rm -f /data/projects/operations/LandfallTools/figs/AK/ECMWF-GEFS_LandfallTool*current.png
-rm -f /data/projects/operations/LandfallTools/figs/SAK/ECMWF-GEFS_LandfallTool*current.png
-
 cd /data/projects/operations/LandfallTools/ar_landfall_tool/
 
 
@@ -69,47 +60,69 @@ echo "STARTING MAKING LFTs at "$date
 
 apptainer exec -e --bind /data:/data /data/projects/operations/LandfallTools/ar_landfall_tool/envs/ar_landfall_tool.2025.12.12.sif python /data/projects/operations/LandfallTools/ar_landfall_tool/run_tool.py "ECMWF-GEFS" "$yyyy$mm$dd$hh"
 
-
 cd /data/projects/operations/LandfallTools/figs/US-west
-check=1
-while [ $check != 0 ]; do
-timeout 120 rsync --ignore-missing-args -avih ECMWF-GEFS_LandfallTool*current.png /data/projects/website/mirror/htdocs/images/ECMWF/ensemble/LandfallTool/US-west/
- check=$?
- if [ $check != 0 ]; then
-  echo "Transfer failed"
-  sleep 10
- fi
+chmod 664 landfalltoolpng
+for domain in coast foothills inland intwest
+do
+ mkdir -p -m 2775 "/data/projects/website/mirror/htdocs/images/landfalltool_ivt150_probability/v1/ECMWF_ENS-GEFS_50/${domain}/${yyyy}${mm}${dd}${hh}/1"
+ mkdir -p -m 2775 "/data/projects/website/mirror/htdocs/images/landfalltool_ivt250_probability/v1/ECMWF_ENS-GEFS_50/${domain}/${yyyy}${mm}${dd}${hh}/1"
+ mkdir -p -m 2775 "/data/projects/website/mirror/htdocs/images/landfalltool_ivt500_probability/v1/ECMWF_ENS-GEFS_50/${domain}/${yyyy}${mm}${dd}${hh}/1"
+ mkdir -p -m 2775 "/data/projects/website/mirror/htdocs/images/landfalltool_ivt750_probability/v1/ECMWF_ENS-GEFS_50/${domain}/${yyyy}${mm}${dd}${hh}/1"
+ mkdir -p -m 2775 "/data/projects/website/mirror/htdocs/images/landfalltool_ivtcontrol/v1/ECMWF_ENS-GEFS_50/${domain}/${yyyy}${mm}${dd}${hh}/1"
+ mkdir -p -m 2775 "/data/projects/website/mirror/htdocs/images/landfalltool_ivtmean/v1/ECMWF_ENS-GEFS_50/${domain}/${yyyy}${mm}${dd}${hh}/1"
+ mv "landfalltool_ivt150_probability__v1__ECMWF_ENS-GEFS_50__${domain}__${yyyy}${mm}${dd}${hh}"* "/data/projects/website/mirror/htdocs/images/landfalltool_ivt150_probability/v1/ECMWF_ENS-GEFS_50/${domain}/${yyyy}${mm}${dd}${hh}/1" &
+ mv "landfalltool_ivt250_probability__v1__ECMWF_ENS-GEFS_50__${domain}__${yyyy}${mm}${dd}${hh}"* "/data/projects/website/mirror/htdocs/images/landfalltool_ivt250_probability/v1/ECMWF_ENS-GEFS_50/${domain}/${yyyy}${mm}${dd}${hh}/1" &
+ mv "landfalltool_ivt500_probability__v1__ECMWF_ENS-GEFS_50__${domain}__${yyyy}${mm}${dd}${hh}"* "/data/projects/website/mirror/htdocs/images/landfalltool_ivt500_probability/v1/ECMWF_ENS-GEFS_50/${domain}/${yyyy}${mm}${dd}${hh}/1" &
+ mv "landfalltool_ivt750_probability__v1__ECMWF_ENS-GEFS_50__${domain}__${yyyy}${mm}${dd}${hh}"* "/data/projects/website/mirror/htdocs/images/landfalltool_ivt750_probability/v1/ECMWF_ENS-GEFS_50/${domain}/${yyyy}${mm}${dd}${hh}/1" &
+ mv "landfalltool_ivtmean__v1__ECMWF_ENS-GEFS_50__${domain}__${yyyy}${mm}${dd}${hh}"* "/data/projects/website/mirror/htdocs/images/landfalltool_ivtmean/v1/ECMWF_ENS-GEFS_50/${domain}/${yyyy}${mm}${dd}${hh}/1" &
+ mv "landfalltool_ivtcontrol__v1__ECMWF_ENS-GEFS_50__${domain}__${yyyy}${mm}${dd}${hh}"* "/data/projects/website/mirror/htdocs/images/landfalltool_ivtcontrol/v1/ECMWF_ENS-GEFS_50/${domain}/${yyyy}${mm}${dd}${hh}/1" &
 done
+wait
 
-cd /data/projects/operations/LandfallTools/figs/AK/
-check=1
-while [ $check != 0 ]; do
-timeout 120 rsync --ignore-missing-args -avih ECMWF-GEFS_LandfallTool*current.png /data/projects/website/mirror/htdocs/images/ECMWF/ensemble/LandfallTool/AK/
- check=$?
- if [ $check != 0 ]; then
-  echo "Transfer failed"
-  sleep 10
- fi
+for domain in intwest 
+do
+ mkdir -p -m 2775 "/data/projects/website/mirror/htdocs/images/landfalltool_ivt100_probability/v1/ECMWF_ENS-GEFS_50/${domain}/${yyyy}${mm}${dd}${hh}/1"
+ mv "landfalltool_ivt100_probability__v1__ECMWF_ENS-GEFS_50__${domain}__${yyyy}${mm}${dd}${hh}"* "/data/projects/website/mirror/htdocs/images/landfalltool_ivt100_probability/v1/ECMWF_ENS-GEFS_50/${domain}/${yyyy}${mm}${dd}${hh}/1" &
 done
+wait
 
-cd /data/projects/operations/LandfallTools/figs/SAK/
-check=1
-while [ $check != 0 ]; do
-timeout 120 rsync --ignore-missing-args -avih ECMWF-GEFS_LandfallTool*current.png /data/projects/website/mirror/htdocs/images/ECMWF/ensemble/LandfallTool/SAK/
- check=$?
- if [ $check != 0 ]; then
-  echo "Transfer failed"
-  sleep 10
- fi
-done
-
-
-cd /data/projects/operations/LandfallTools/figs/US-west
-mv "ECMWF-GEFS_LandfallTool"*$yyyy$mm$dd$hh".png" "/data/downloaded/Forecasts/ARPortal_Archive/ECMWF/ensemble/landfall_images/"$yyyy$mm$dd$hh"/US-west/"
-cd /data/projects/operations/LandfallTools/figs/AK
-mv "ECMWF-GEFS_LandfallTool"*$yyyy$mm$dd$hh".png" "/data/downloaded/Forecasts/ARPortal_Archive/ECMWF/ensemble/landfall_images/"$yyyy$mm$dd$hh"/AK/"
 cd /data/projects/operations/LandfallTools/figs/SAK
-mv "ECMWF-GEFS_LandfallTool"*$yyyy$mm$dd$hh".png" "/data/downloaded/Forecasts/ARPortal_Archive/ECMWF/ensemble/landfall_images/"$yyyy$mm$dd$hh"/SAK/"
+chmod 664 landfalltoolpng
+for domain in SAKcoast SAKfoothills SAKinland
+do
+ mkdir -p -m 2775 "/data/projects/website/mirror/htdocs/images/landfalltool_ivt150_probability/v1/ECMWF_ENS-GEFS_50/${domain}/${yyyy}${mm}${dd}${hh}/1"
+ mkdir -p -m 2775 "/data/projects/website/mirror/htdocs/images/landfalltool_ivt250_probability/v1/ECMWF_ENS-GEFS_50/${domain}/${yyyy}${mm}${dd}${hh}/1"
+ mkdir -p -m 2775 "/data/projects/website/mirror/htdocs/images/landfalltool_ivt500_probability/v1/ECMWF_ENS-GEFS_50/${domain}/${yyyy}${mm}${dd}${hh}/1"
+ mkdir -p -m 2775 "/data/projects/website/mirror/htdocs/images/landfalltool_ivt750_probability/v1/ECMWF_ENS-GEFS_50/${domain}/${yyyy}${mm}${dd}${hh}/1"
+ mkdir -p -m 2775 "/data/projects/website/mirror/htdocs/images/landfalltool_ivtcontrol/v1/ECMWF_ENS-GEFS_50/${domain}/${yyyy}${mm}${dd}${hh}/1"
+ mkdir -p -m 2775 "/data/projects/website/mirror/htdocs/images/landfalltool_ivtmean/v1/ECMWF_ENS-GEFS_50/${domain}/${yyyy}${mm}${dd}${hh}/1"
+ mv "landfalltool_ivt150_probability__v1__ECMWF_ENS-GEFS_50__${domain}__${yyyy}${mm}${dd}${hh}"* "/data/projects/website/mirror/htdocs/images/landfalltool_ivt150_probability/v1/ECMWF_ENS-GEFS_50/${domain}/${yyyy}${mm}${dd}${hh}/1" &
+ mv "landfalltool_ivt250_probability__v1__ECMWF_ENS-GEFS_50__${domain}__${yyyy}${mm}${dd}${hh}"* "/data/projects/website/mirror/htdocs/images/landfalltool_ivt250_probability/v1/ECMWF_ENS-GEFS_50/${domain}/${yyyy}${mm}${dd}${hh}/1" &
+ mv "landfalltool_ivt500_probability__v1__ECMWF_ENS-GEFS_50__${domain}__${yyyy}${mm}${dd}${hh}"* "/data/projects/website/mirror/htdocs/images/landfalltool_ivt500_probability/v1/ECMWF_ENS-GEFS_50/${domain}/${yyyy}${mm}${dd}${hh}/1" &
+ mv "landfalltool_ivt750_probability__v1__ECMWF_ENS-GEFS_50__${domain}__${yyyy}${mm}${dd}${hh}"* "/data/projects/website/mirror/htdocs/images/landfalltool_ivt750_probability/v1/ECMWF_ENS-GEFS_50/${domain}/${yyyy}${mm}${dd}${hh}/1" &
+ mv "landfalltool_ivtmean__v1__ECMWF_ENS-GEFS_50__${domain}__${yyyy}${mm}${dd}${hh}"* "/data/projects/website/mirror/htdocs/images/landfalltool_ivtmean/v1/ECMWF_ENS-GEFS_50/${domain}/${yyyy}${mm}${dd}${hh}/1" &
+ mv "landfalltool_ivtcontrol__v1__ECMWF_ENS-GEFS_50__${domain}__${yyyy}${mm}${dd}${hh}"* "/data/projects/website/mirror/htdocs/images/landfalltool_ivtcontrol/v1/ECMWF_ENS-GEFS_50/${domain}/${yyyy}${mm}${dd}${hh}/1" &
+done
+wait
+
+cd /data/projects/operations/LandfallTools/figs/AK
+chmod 664 landfalltoolpng
+for domain in AKcoast AKinland
+do
+ mkdir -p -m 2775 "/data/projects/website/mirror/htdocs/images/landfalltool_ivt150_probability/v1/ECMWF_ENS-GEFS_50/${domain}/${yyyy}${mm}${dd}${hh}/1"
+ mkdir -p -m 2775 "/data/projects/website/mirror/htdocs/images/landfalltool_ivt250_probability/v1/ECMWF_ENS-GEFS_50/${domain}/${yyyy}${mm}${dd}${hh}/1"
+ mkdir -p -m 2775 "/data/projects/website/mirror/htdocs/images/landfalltool_ivt500_probability/v1/ECMWF_ENS-GEFS_50/${domain}/${yyyy}${mm}${dd}${hh}/1"
+ mkdir -p -m 2775 "/data/projects/website/mirror/htdocs/images/landfalltool_ivt750_probability/v1/ECMWF_ENS-GEFS_50/${domain}/${yyyy}${mm}${dd}${hh}/1"
+ mkdir -p -m 2775 "/data/projects/website/mirror/htdocs/images/landfalltool_ivtcontrol/v1/ECMWF_ENS-GEFS_50/${domain}/${yyyy}${mm}${dd}${hh}/1"
+ mkdir -p -m 2775 "/data/projects/website/mirror/htdocs/images/landfalltool_ivtmean/v1/ECMWF_ENS-GEFS_50/${domain}/${yyyy}${mm}${dd}${hh}/1"
+ mv "landfalltool_ivt150_probability__v1__ECMWF_ENS-GEFS_50__${domain}__${yyyy}${mm}${dd}${hh}"* "/data/projects/website/mirror/htdocs/images/landfalltool_ivt150_probability/v1/ECMWF_ENS-GEFS_50/${domain}/${yyyy}${mm}${dd}${hh}/1" &
+ mv "landfalltool_ivt250_probability__v1__ECMWF_ENS-GEFS_50__${domain}__${yyyy}${mm}${dd}${hh}"* "/data/projects/website/mirror/htdocs/images/landfalltool_ivt250_probability/v1/ECMWF_ENS-GEFS_50/${domain}/${yyyy}${mm}${dd}${hh}/1" &
+ mv "landfalltool_ivt500_probability__v1__ECMWF_ENS-GEFS_50__${domain}__${yyyy}${mm}${dd}${hh}"* "/data/projects/website/mirror/htdocs/images/landfalltool_ivt500_probability/v1/ECMWF_ENS-GEFS_50/${domain}/${yyyy}${mm}${dd}${hh}/1" &
+ mv "landfalltool_ivt750_probability__v1__ECMWF_ENS-GEFS_50__${domain}__${yyyy}${mm}${dd}${hh}"* "/data/projects/website/mirror/htdocs/images/landfalltool_ivt750_probability/v1/ECMWF_ENS-GEFS_50/${domain}/${yyyy}${mm}${dd}${hh}/1" &
+ mv "landfalltool_ivtmean__v1__ECMWF_ENS-GEFS_50__${domain}__${yyyy}${mm}${dd}${hh}"* "/data/projects/website/mirror/htdocs/images/landfalltool_ivtmean/v1/ECMWF_ENS-GEFS_50/${domain}/${yyyy}${mm}${dd}${hh}/1" &
+ mv "landfalltool_ivtcontrol__v1__ECMWF_ENS-GEFS_50__${domain}__${yyyy}${mm}${dd}${hh}"* "/data/projects/website/mirror/htdocs/images/landfalltool_ivtcontrol/v1/ECMWF_ENS-GEFS_50/${domain}/${yyyy}${mm}${dd}${hh}/1" &
+done
+wait
 
 
 date=`date`

@@ -9,15 +9,6 @@ mm=`date -d '-'$lag' hours' -u +%m`
 dd=`date -d '-'$lag' hours' -u +%d`
 hh=`date -d '-'$lag' hours' -u +%H`
 
-mkdir "/data/downloaded/Forecasts/ARPortal_Archive/ECMWF/ensemble/landfall_images/"$yyyy$mm$dd$hh
-mkdir "/data/downloaded/Forecasts/ARPortal_Archive/ECMWF/ensemble/landfall_images/"$yyyy$mm$dd$hh"/US-west/"
-mkdir "/data/downloaded/Forecasts/ARPortal_Archive/ECMWF/ensemble/landfall_images/"$yyyy$mm$dd$hh"/SAK/"
-mkdir "/data/downloaded/Forecasts/ARPortal_Archive/ECMWF/ensemble/landfall_images/"$yyyy$mm$dd$hh"/AK"
-
-rm -f /data/projects/operations/LandfallTools/figs/US-west/ECMWF_LandfallTool*current.png
-rm -f /data/projects/operations/LandfallTools/figs/AK/ECMWF_LandfallTool*current.png
-rm -f /data/projects/operations/LandfallTools/figs/SAK/ECMWF_LandfallTool*current.png
-
 cd /data/projects/operations/LandfallTools/ar_landfall_tool/
 
 
@@ -48,125 +39,120 @@ echo "STARTING MAKING LFTs at "$date
 apptainer exec -e --bind /data:/data /data/projects/operations/LandfallTools/ar_landfall_tool/envs/ar_landfall_tool.2025.12.12.sif python /data/projects/operations/LandfallTools/ar_landfall_tool/run_tool.py "ECMWF" "$yyyy$mm$dd$hh"
 
 cd /data/projects/operations/LandfallTools/figs/US-west
-check=1
-while [ $check != 0 ]; do
-timeout 120 rsync --ignore-missing-args -avih ECMWF_LandfallTool*current.png /data/projects/website/mirror/htdocs/images/ECMWF/ensemble/LandfallTool/US-west/
- check=$?
- if [ $check != 0 ]; then
-  echo "Transfer failed"
-  sleep 10
- fi
-done
-
-cd /data/projects/operations/LandfallTools/figs/AK/
-check=1
-while [ $check != 0 ]; do
-timeout 120 rsync --ignore-missing-args -avih ECMWF_LandfallTool*current.png /data/projects/website/mirror/htdocs/images/ECMWF/ensemble/LandfallTool/AK/
- check=$?
- if [ $check != 0 ]; then
-  echo "Transfer failed"
-  sleep 10
- fi
-done
-
-cd /data/projects/operations/LandfallTools/figs/SAK/
-check=1
-while [ $check != 0 ]; do
-timeout 120 rsync --ignore-missing-args -avih ECMWF_LandfallTool*current.png /data/projects/website/mirror/htdocs/images/ECMWF/ensemble/LandfallTool/SAK/
- check=$?
- if [ $check != 0 ]; then
-  echo "Transfer failed"
-  sleep 10
- fi
-done
-
-echo "/data/projects/operations/LandfallTools/figs/US-west/"
-ls /data/projects/operations/LandfallTools/figs/US-west/
-echo "/data/projects/operations/LandfallTools/figs/AK/"
-ls /data/projects/operations/LandfallTools/figs/AK/
-echo "/data/projects/operations/LandfallTools/figs/SAK/"
-ls /data/projects/operations/LandfallTools/figs/SAK/
-
-
-cp "/data/projects/operations/LandfallTools/figs/US-west/ECMWF_LandfallTool_250_coast_"$yyyy$mm$dd$hh".png" "ECMWF_LandfallTool_500_coast_"$yyyy$mm$dd$hh".png" /data/projects/for_sharing/Forecast_Product_Archive/PSing/ECMWF/
-mv "/data/projects/operations/LandfallTools/figs/US-west/ECMWF_LandfallTool"*$yyyy$mm$dd$hh".png" "/data/downloaded/Forecasts/ARPortal_Archive/ECMWF/ensemble/landfall_images/"$yyyy$mm$dd$hh"/US-west/"
-mv "/data/projects/operations/LandfallTools/figs/AK/ECMWF_LandfallTool"*$yyyy$mm$dd$hh".png" "/data/downloaded/Forecasts/ARPortal_Archive/ECMWF/ensemble/landfall_images/"$yyyy$mm$dd$hh"/AK/"
-mv "/data/projects/operations/LandfallTools/figs/SAK/ECMWF_LandfallTool"*$yyyy$mm$dd$hh".png" "/data/downloaded/Forecasts/ARPortal_Archive/ECMWF/ensemble/landfall_images/"$yyyy$mm$dd$hh"/SAK/"
-
-cd /data/projects/operations/LandfallTools/figs/dProgdT/
-rm -f /data/projects/operations/LandfallTools/figs/dProgdT/ECMWF/US-west/*.png
-rm -f /data/projects/operations/LandfallTools/figs/dProgdT/ECMWF/AK/*.png
-rm -f /data/projects/operations/LandfallTools/figs/dProgdT/ECMWF/SAK/*.png
-
-X=0
-Y=24
-while [ $X -lt 169 ];
+chmod 664 landfalltoolpng
+for domain in coast foothills inland intwest
 do
- date=`date -u -d $yyyy$mm$dd' '$hh' -'$X' hours' +%Y%m%d%H`
- for trans in coast foothills inland intwest
- do
-  cp "/data/downloaded/Forecasts/ARPortal_Archive/ECMWF/ensemble/landfall_images/"$date"/US-west/ECMWF_LandfallTool_150_"$trans"_"$date".png" "/data/projects/operations/LandfallTools/figs/dProgdT/ECMWF/US-west/ECMWF_LandfallTool_150_"$trans"_"$Y".png"
-  cp "/data/downloaded/Forecasts/ARPortal_Archive/ECMWF/ensemble/landfall_images/"$date"/US-west/ECMWF_LandfallTool_250_"$trans"_"$date".png" "/data/projects/operations/LandfallTools/figs/dProgdT/ECMWF/US-west/ECMWF_LandfallTool_250_"$trans"_"$Y".png"
-  cp "/data/downloaded/Forecasts/ARPortal_Archive/ECMWF/ensemble/landfall_images/"$date"/US-west/ECMWF_LandfallTool_500_"$trans"_"$date".png" "/data/projects/operations/LandfallTools/figs/dProgdT/ECMWF/US-west/ECMWF_LandfallTool_500_"$trans"_"$Y".png"
-  cp "/data/downloaded/Forecasts/ARPortal_Archive/ECMWF/ensemble/landfall_images/"$date"/US-west/ECMWF_LandfallTool_750_"$trans"_"$date".png" "/data/projects/operations/LandfallTools/figs/dProgdT/ECMWF/US-west/ECMWF_LandfallTool_750_"$trans"_"$Y".png"
-  cp "/data/downloaded/Forecasts/ARPortal_Archive/ECMWF/ensemble/landfall_images/"$date"/US-west/ECMWF_LandfallTool_control_"$trans"_"$date".png" "/data/projects/operations/LandfallTools/figs/dProgdT/ECMWF/US-west/ECMWF_LandfallTool_Control_"$trans"_"$Y".png"
-  cp "/data/downloaded/Forecasts/ARPortal_Archive/ECMWF/ensemble/landfall_images/"$date"/US-west/ECMWF_LandfallTool_ensemble_mean_"$trans"_"$date".png" "/data/projects/operations/LandfallTools/figs/dProgdT/ECMWF/US-west/ECMWF_LandfallTool_Mean_"$trans"_"$Y".png"
+ mkdir -p -m 2775 "/data/projects/website/mirror/htdocs/images/landfalltool_ivt150_probability/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1"
+ mkdir -p -m 2775 "/data/projects/website/mirror/htdocs/images/landfalltool_ivt250_probability/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1"
+ mkdir -p -m 2775 "/data/projects/website/mirror/htdocs/images/landfalltool_ivt500_probability/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1"
+ mkdir -p -m 2775 "/data/projects/website/mirror/htdocs/images/landfalltool_ivt750_probability/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1"
+ mkdir -p -m 2775 "/data/projects/website/mirror/htdocs/images/landfalltool_ivt150_vectors/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1"
+ mkdir -p -m 2775 "/data/projects/website/mirror/htdocs/images/landfalltool_ivt250_vectors/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1"
+ mkdir -p -m 2775 "/data/projects/website/mirror/htdocs/images/landfalltool_ivt500_vectors/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1"
+ mkdir -p -m 2775 "/data/projects/website/mirror/htdocs/images/landfalltool_ivt750_vectors/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1"
+ mkdir -p -m 2775 "/data/projects/website/mirror/htdocs/images/landfalltool_ivtcontrol/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1"
+ mkdir -p -m 2775 "/data/projects/website/mirror/htdocs/images/landfalltool_ivtmean/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1"
+ mv "landfalltool_ivt150_probability__v1__ECMWF_ENS__${domain}__${yyyy}${mm}${dd}${hh}"* "/data/projects/website/mirror/htdocs/images/landfalltool_ivt150_probability/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1" &
+ mv "landfalltool_ivt250_probability__v1__ECMWF_ENS__${domain}__${yyyy}${mm}${dd}${hh}"* "/data/projects/website/mirror/htdocs/images/landfalltool_ivt250_probability/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1" &
+ mv "landfalltool_ivt500_probability__v1__ECMWF_ENS__${domain}__${yyyy}${mm}${dd}${hh}"* "/data/projects/website/mirror/htdocs/images/landfalltool_ivt500_probability/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1" &
+ mv "landfalltool_ivt750_probability__v1__ECMWF_ENS__${domain}__${yyyy}${mm}${dd}${hh}"* "/data/projects/website/mirror/htdocs/images/landfalltool_ivt750_probability/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1" &
+ mv "landfalltool_ivt150_vectors__v1__ECMWF_ENS__${domain}__${yyyy}${mm}${dd}${hh}"* "/data/projects/website/mirror/htdocs/images/landfalltool_ivt150_vectors/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1" &
+ mv "landfalltool_ivt250_vectors__v1__ECMWF_ENS__${domain}__${yyyy}${mm}${dd}${hh}"* "/data/projects/website/mirror/htdocs/images/landfalltool_ivt250_vectors/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1" &
+ mv "landfalltool_ivt500_vectors__v1__ECMWF_ENS__${domain}__${yyyy}${mm}${dd}${hh}"* "/data/projects/website/mirror/htdocs/images/landfalltool_ivt500_vectors/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1" &
+ mv "landfalltool_ivt750_vectors__v1__ECMWF_ENS__${domain}__${yyyy}${mm}${dd}${hh}"* "/data/projects/website/mirror/htdocs/images/landfalltool_ivt750_vectors/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1" &
+ mv "landfalltool_ivtmean__v1__ECMWF_ENS__${domain}__${yyyy}${mm}${dd}${hh}"* "/data/projects/website/mirror/htdocs/images/landfalltool_ivtmean/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1" &
+ mv "landfalltool_ivtcontrol__v1__ECMWF_ENS__${domain}__${yyyy}${mm}${dd}${hh}"* "/data/projects/website/mirror/htdocs/images/landfalltool_ivtcontrol/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1" &
+done
+wait
+
+for domain in intwest
+do
+ mkdir -p -m 2775 "/data/projects/website/mirror/htdocs/images/landfalltool_ivt100_probability/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1"
+ mkdir -p -m 2775 "/data/projects/website/mirror/htdocs/images/landfalltool_ivt100_vectors/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1"
+ mv "landfalltool_ivt100_probability__v1__ECMWF_ENS__${domain}__${yyyy}${mm}${dd}${hh}"* "/data/projects/website/mirror/htdocs/images/landfalltool_ivt100_probability/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1" &
+ mv "landfalltool_ivt100_vectors__v1__ECMWF_ENS__${domain}__${yyyy}${mm}${dd}${hh}"* "/data/projects/website/mirror/htdocs/images/landfalltool_ivt100_vectors/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1" &
+done
+wait
+
+cd /data/projects/operations/LandfallTools/figs/SAK
+chmod 664 landfalltoolpng
+for domain in SAKcoast SAKfoothills SAKinland
+do
+ mkdir -p -m 2775 "/data/projects/website/mirror/htdocs/images/landfalltool_ivt150_probability/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1"
+ mkdir -p -m 2775 "/data/projects/website/mirror/htdocs/images/landfalltool_ivt250_probability/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1"
+ mkdir -p -m 2775 "/data/projects/website/mirror/htdocs/images/landfalltool_ivt500_probability/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1"
+ mkdir -p -m 2775 "/data/projects/website/mirror/htdocs/images/landfalltool_ivt750_probability/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1"
+ mkdir -p -m 2775 "/data/projects/website/mirror/htdocs/images/landfalltool_ivt150_vectors/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1"
+ mkdir -p -m 2775 "/data/projects/website/mirror/htdocs/images/landfalltool_ivt250_vectors/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1"
+ mkdir -p -m 2775 "/data/projects/website/mirror/htdocs/images/landfalltool_ivt500_vectors/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1"
+ mkdir -p -m 2775 "/data/projects/website/mirror/htdocs/images/landfalltool_ivt750_vectors/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1"
+ mkdir -p -m 2775 "/data/projects/website/mirror/htdocs/images/landfalltool_ivtcontrol/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1"
+ mkdir -p -m 2775 "/data/projects/website/mirror/htdocs/images/landfalltool_ivtmean/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1"
+ mv "landfalltool_ivt150_probability__v1__ECMWF_ENS__${domain}__${yyyy}${mm}${dd}${hh}"* "/data/projects/website/mirror/htdocs/images/landfalltool_ivt150_probability/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1" &
+ mv "landfalltool_ivt250_probability__v1__ECMWF_ENS__${domain}__${yyyy}${mm}${dd}${hh}"* "/data/projects/website/mirror/htdocs/images/landfalltool_ivt250_probability/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1" &
+ mv "landfalltool_ivt500_probability__v1__ECMWF_ENS__${domain}__${yyyy}${mm}${dd}${hh}"* "/data/projects/website/mirror/htdocs/images/landfalltool_ivt500_probability/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1" &
+ mv "landfalltool_ivt750_probability__v1__ECMWF_ENS__${domain}__${yyyy}${mm}${dd}${hh}"* "/data/projects/website/mirror/htdocs/images/landfalltool_ivt750_probability/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1" &
+ mv "landfalltool_ivt150_vectors__v1__ECMWF_ENS__${domain}__${yyyy}${mm}${dd}${hh}"* "/data/projects/website/mirror/htdocs/images/landfalltool_ivt150_vectors/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1" &
+ mv "landfalltool_ivt250_vectors__v1__ECMWF_ENS__${domain}__${yyyy}${mm}${dd}${hh}"* "/data/projects/website/mirror/htdocs/images/landfalltool_ivt250_vectors/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1" &
+ mv "landfalltool_ivt500_vectors__v1__ECMWF_ENS__${domain}__${yyyy}${mm}${dd}${hh}"* "/data/projects/website/mirror/htdocs/images/landfalltool_ivt500_vectors/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1" &
+ mv "landfalltool_ivt750_vectors__v1__ECMWF_ENS__${domain}__${yyyy}${mm}${dd}${hh}"* "/data/projects/website/mirror/htdocs/images/landfalltool_ivt750_vectors/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1" &
+ mv "landfalltool_ivtmean__v1__ECMWF_ENS__${domain}__${yyyy}${mm}${dd}${hh}"* "/data/projects/website/mirror/htdocs/images/landfalltool_ivtmean/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1" &
+ mv "landfalltool_ivtcontrol__v1__ECMWF_ENS__${domain}__${yyyy}${mm}${dd}${hh}"* "/data/projects/website/mirror/htdocs/images/landfalltool_ivtcontrol/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1" &
+done
+wait
+
+cd /data/projects/operations/LandfallTools/figs/AK
+chmod 664 landfalltoolpng
+for domain in AKcoast AKinland
+do
+ mkdir -p -m 2775 "/data/projects/website/mirror/htdocs/images/landfalltool_ivt150_probability/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1"
+ mkdir -p -m 2775 "/data/projects/website/mirror/htdocs/images/landfalltool_ivt250_probability/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1"
+ mkdir -p -m 2775 "/data/projects/website/mirror/htdocs/images/landfalltool_ivt500_probability/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1"
+ mkdir -p -m 2775 "/data/projects/website/mirror/htdocs/images/landfalltool_ivt750_probability/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1"
+ mkdir -p -m 2775 "/data/projects/website/mirror/htdocs/images/landfalltool_ivt150_vectors/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1"
+ mkdir -p -m 2775 "/data/projects/website/mirror/htdocs/images/landfalltool_ivt250_vectors/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1"
+ mkdir -p -m 2775 "/data/projects/website/mirror/htdocs/images/landfalltool_ivt500_vectors/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1"
+ mkdir -p -m 2775 "/data/projects/website/mirror/htdocs/images/landfalltool_ivt750_vectors/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1"
+ mkdir -p -m 2775 "/data/projects/website/mirror/htdocs/images/landfalltool_ivtcontrol/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1"
+ mkdir -p -m 2775 "/data/projects/website/mirror/htdocs/images/landfalltool_ivtmean/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1"
+ mv "landfalltool_ivt150_probability__v1__ECMWF_ENS__${domain}__${yyyy}${mm}${dd}${hh}"* "/data/projects/website/mirror/htdocs/images/landfalltool_ivt150_probability/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1" &
+ mv "landfalltool_ivt250_probability__v1__ECMWF_ENS__${domain}__${yyyy}${mm}${dd}${hh}"* "/data/projects/website/mirror/htdocs/images/landfalltool_ivt250_probability/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1" &
+ mv "landfalltool_ivt500_probability__v1__ECMWF_ENS__${domain}__${yyyy}${mm}${dd}${hh}"* "/data/projects/website/mirror/htdocs/images/landfalltool_ivt500_probability/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1" &
+ mv "landfalltool_ivt750_probability__v1__ECMWF_ENS__${domain}__${yyyy}${mm}${dd}${hh}"* "/data/projects/website/mirror/htdocs/images/landfalltool_ivt750_probability/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1" &
+ mv "landfalltool_ivt150_vectors__v1__ECMWF_ENS__${domain}__${yyyy}${mm}${dd}${hh}"* "/data/projects/website/mirror/htdocs/images/landfalltool_ivt150_vectors/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1" &
+ mv "landfalltool_ivt250_vectors__v1__ECMWF_ENS__${domain}__${yyyy}${mm}${dd}${hh}"* "/data/projects/website/mirror/htdocs/images/landfalltool_ivt250_vectors/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1" &
+ mv "landfalltool_ivt500_vectors__v1__ECMWF_ENS__${domain}__${yyyy}${mm}${dd}${hh}"* "/data/projects/website/mirror/htdocs/images/landfalltool_ivt500_vectors/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1" &
+ mv "landfalltool_ivt750_vectors__v1__ECMWF_ENS__${domain}__${yyyy}${mm}${dd}${hh}"* "/data/projects/website/mirror/htdocs/images/landfalltool_ivt750_vectors/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1" &
+ mv "landfalltool_ivtmean__v1__ECMWF_ENS__${domain}__${yyyy}${mm}${dd}${hh}"* "/data/projects/website/mirror/htdocs/images/landfalltool_ivtmean/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1" &
+ mv "landfalltool_ivtcontrol__v1__ECMWF_ENS__${domain}__${yyyy}${mm}${dd}${hh}"* "/data/projects/website/mirror/htdocs/images/landfalltool_ivtcontrol/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1" &
+done
+wait
+
+cp /data/projects/operations/LandfallTools/figs/US-west/ECMWF_LandfallTool_250_coast_current.png "/data/projects/for_sharing/Forecast_Product_Archive/PSing/ECMWF/ECMWF_LandfallTool_250_coast_${yyyy}${mm}${dd}${hh}.png"
+cp /data/projects/operations/LandfallTools/figs/US-west/ECMWF_LandfallTool_500_coast_current.png "/data/projects/for_sharing/Forecast_Product_Archive/PSing/ECMWF/ECMWF_LandfallTool_500_coast_${yyyy}${mm}${dd}${hh}.png"
+
+for domain in coast foothills inland intwest SAKcoast SAKfoothills SAKinland AKcoast AKinland
+do
+ cp "/data/projects/website/mirror/htdocs/images/landfalltool_ivt150_probability/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1/landfalltool_ivt150_probability__v1__ECMWF_ENS__${domain}__${yyyy}${mm}${dd}${hh}__1__F384.png" "/data/projects/website/mirror/htdocs/images/landfalltool_ivt150_probability/v1/ECMWF_ENS/${domain}/latest/1/landfalltool_ivt150_probability__v1__ECMWF_ENS__${domain}__latest__1__F384.png" &
+ cp "/data/projects/website/mirror/htdocs/images/landfalltool_ivt250_probability/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1/landfalltool_ivt250_probability__v1__ECMWF_ENS__${domain}__${yyyy}${mm}${dd}${hh}__1__F384.png" "/data/projects/website/mirror/htdocs/images/landfalltool_ivt250_probability/v1/ECMWF_ENS/${domain}/latest/1/landfalltool_ivt250_probability__v1__ECMWF_ENS__${domain}__latest__1__F384.png" &
+ cp "/data/projects/website/mirror/htdocs/images/landfalltool_ivt500_probability/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1/landfalltool_ivt500_probability__v1__ECMWF_ENS__${domain}__${yyyy}${mm}${dd}${hh}__1__F384.png" "/data/projects/website/mirror/htdocs/images/landfalltool_ivt500_probability/v1/ECMWF_ENS/${domain}/latest/1/landfalltool_ivt500_probability__v1__ECMWF_ENS__${domain}__latest__1__F384.png" &
+ cp "/data/projects/website/mirror/htdocs/images/landfalltool_ivt750_probability/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1/landfalltool_ivt750_probability__v1__ECMWF_ENS__${domain}__${yyyy}${mm}${dd}${hh}__1__F384.png" "/data/projects/website/mirror/htdocs/images/landfalltool_ivt750_probability/v1/ECMWF_ENS/${domain}/latest/1/landfalltool_ivt750_probability__v1__ECMWF_ENS__${domain}__latest__1__F384.png" &
+ cp "/data/projects/website/mirror/htdocs/images/landfalltool_ivt150_vectors/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1/landfalltool_ivt150_vectors__v1__ECMWF_ENS__${domain}__${yyyy}${mm}${dd}${hh}__1__F168.png" "/data/projects/website/mirror/htdocs/images/landfalltool_ivt150_vectors/v1/ECMWF_ENS/${domain}/latest/1/landfalltool_ivt150_vectors__v1__ECMWF_ENS__${domain}__latest__1__F168.png" &
+ cp "/data/projects/website/mirror/htdocs/images/landfalltool_ivt250_vectors/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1/landfalltool_ivt250_vectors__v1__ECMWF_ENS__${domain}__${yyyy}${mm}${dd}${hh}__1__F168.png" "/data/projects/website/mirror/htdocs/images/landfalltool_ivt250_vectors/v1/ECMWF_ENS/${domain}/latest/1/landfalltool_ivt250_vectors__v1__ECMWF_ENS__${domain}__latest__1__F168.png" &
+ cp "/data/projects/website/mirror/htdocs/images/landfalltool_ivt500_vectors/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1/landfalltool_ivt500_vectors__v1__ECMWF_ENS__${domain}__${yyyy}${mm}${dd}${hh}__1__F168.png" "/data/projects/website/mirror/htdocs/images/landfalltool_ivt500_vectors/v1/ECMWF_ENS/${domain}/latest/1/landfalltool_ivt500_vectors__v1__ECMWF_ENS__${domain}__latest__1__F168.png" &
+ cp "/data/projects/website/mirror/htdocs/images/landfalltool_ivt750_vectors/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1/landfalltool_ivt750_vectors__v1__ECMWF_ENS__${domain}__${yyyy}${mm}${dd}${hh}__1__F168.png" "/data/projects/website/mirror/htdocs/images/landfalltool_ivt750_vectors/v1/ECMWF_ENS/${domain}/latest/1/landfalltool_ivt750_vectors__v1__ECMWF_ENS__${domain}__latest__1__F168.png" &
+ cp "/data/projects/website/mirror/htdocs/images/landfalltool_ivtmean/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1/landfalltool_ivtmean__v1__ECMWF_ENS__${domain}__${yyyy}${mm}${dd}${hh}__1__F384.png" "/data/projects/website/mirror/htdocs/images/landfalltool_ivtmean/v1/ECMWF_ENS/${domain}/latest/1/landfalltool_ivtmean__v1__ECMWF_ENS__${domain}__latest__1__F384.png" &
+ cp "/data/projects/website/mirror/htdocs/images/landfalltool_ivtcontrol/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1/landfalltool_ivtcontrol__v1__ECMWF_ENS__${domain}__${yyyy}${mm}${dd}${hh}__1__F384.png" "/data/projects/website/mirror/htdocs/images/landfalltool_ivtcontrol/v1/ECMWF_ENS/${domain}/latest/1/landfalltool_ivtcontrol__v1__ECMWF_ENS__${domain}__latest__1_ F384.png" &
+ wait
 done
 
- for trans in coast foothills inland
- do
-  cp "/data/downloaded/Forecasts/ARPortal_Archive/ECMWF/ensemble/landfall_images/"$date"/SAK/ECMWF_LandfallTool_150_"$trans"_"$date".png" "/data/projects/operations/LandfallTools/figs/dProgdT/ECMWF/SAK/ECMWF_LandfallTool_150_"$trans"_"$Y".png"
-  cp "/data/downloaded/Forecasts/ARPortal_Archive/ECMWF/ensemble/landfall_images/"$date"/SAK/ECMWF_LandfallTool_250_"$trans"_"$date".png" "/data/projects/operations/LandfallTools/figs/dProgdT/ECMWF/SAK/ECMWF_LandfallTool_250_"$trans"_"$Y".png"
-  cp "/data/downloaded/Forecasts/ARPortal_Archive/ECMWF/ensemble/landfall_images/"$date"/SAK/ECMWF_LandfallTool_500_"$trans"_"$date".png" "/data/projects/operations/LandfallTools/figs/dProgdT/ECMWF/SAK/ECMWF_LandfallTool_500_"$trans"_"$Y".png"
-  cp "/data/downloaded/Forecasts/ARPortal_Archive/ECMWF/ensemble/landfall_images/"$date"/SAK/ECMWF_LandfallTool_750_"$trans"_"$date".png" "/data/projects/operations/LandfallTools/figs/dProgdT/ECMWF/SAK/ECMWF_LandfallTool_750_"$trans"_"$Y".png"
-  cp "/data/downloaded/Forecasts/ARPortal_Archive/ECMWF/ensemble/landfall_images/"$date"/SAK/ECMWF_LandfallTool_control_"$trans"_"$date".png" "/data/projects/operations/LandfallTools/figs/dProgdT/ECMWF/SAK/ECMWF_LandfallTool_Control_"$trans"_"$Y".png"
-  cp "/data/downloaded/Forecasts/ARPortal_Archive/ECMWF/ensemble/landfall_images/"$date"/SAK/ECMWF_LandfallTool_ensemble_mean_"$trans"_"$date".png" "/data/projects/operations/LandfallTools/figs/dProgdT/ECMWF/SAK/ECMWF_LandfallTool_Mean_"$trans"_"$Y".png"
- done
-
- for trans in coast inland
- do
-  cp "/data/downloaded/Forecasts/ARPortal_Archive/ECMWF/ensemble/landfall_images/"$date"/AK/ECMWF_LandfallTool_150_"$trans"_"$date".png" "/data/projects/operations/LandfallTools/figs/dProgdT/ECMWF/AK/ECMWF_LandfallTool_150_"$trans"_"$Y".png"
-  cp "/data/downloaded/Forecasts/ARPortal_Archive/ECMWF/ensemble/landfall_images/"$date"/AK/ECMWF_LandfallTool_250_"$trans"_"$date".png" "/data/projects/operations/LandfallTools/figs/dProgdT/ECMWF/AK/ECMWF_LandfallTool_250_"$trans"_"$Y".png"
-  cp "/data/downloaded/Forecasts/ARPortal_Archive/ECMWF/ensemble/landfall_images/"$date"/AK/ECMWF_LandfallTool_500_"$trans"_"$date".png" "/data/projects/operations/LandfallTools/figs/dProgdT/ECMWF/AK/ECMWF_LandfallTool_500_"$trans"_"$Y".png"
-  cp "/data/downloaded/Forecasts/ARPortal_Archive/ECMWF/ensemble/landfall_images/"$date"/AK/ECMWF_LandfallTool_750_"$trans"_"$date".png" "/data/projects/operations/LandfallTools/figs/dProgdT/ECMWF/AK/ECMWF_LandfallTool_750_"$trans"_"$Y".png"
-  cp "/data/downloaded/Forecasts/ARPortal_Archive/ECMWF/ensemble/landfall_images/"$date"/AK/ECMWF_LandfallTool_control_"$trans"_"$date".png" "/data/projects/operations/LandfallTools/figs/dProgdT/ECMWF/AK/ECMWF_LandfallTool_Control_"$trans"_"$Y".png"
-  cp "/data/downloaded/Forecasts/ARPortal_Archive/ECMWF/ensemble/landfall_images/"$date"/AK/ECMWF_LandfallTool_ensemble_mean_"$trans"_"$date".png" "/data/projects/operations/LandfallTools/figs/dProgdT/ECMWF/AK/ECMWF_LandfallTool_Mean_"$trans"_"$Y".png"
-
- done
-
- let X=X+12
- let Y=Y-1
+for domain in intwest
+do
+ cp "/data/projects/website/mirror/htdocs/images/landfalltool_ivt100_probability/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1/landfalltool_ivt100_probability__v1__ECMWF_ENS__${domain}__${yyyy}${mm}${dd}${hh}__1__F384.png" "/data/projects/website/mirror/htdocs/images/landfalltool_ivt150_probability/v1/ECMWF_ENS/${domain}/latest/1/landfalltool_ivt100_probability__v1__ECMWF_ENS__${domain}__latest__1__F384.png" &
+ cp "/data/projects/website/mirror/htdocs/images/landfalltool_ivt100_vectors/v1/ECMWF_ENS/${domain}/${yyyy}${mm}${dd}${hh}/1/landfalltool_ivt100_vectors__v1__ECMWF_ENS__${domain}__${yyyy}${mm}${dd}${hh}__1__F168.png" "/data/projects/website/mirror/htdocs/images/landfalltool_ivt150_vectors/v1/ECMWF_ENS/${domain}/latest/1/landfalltool_ivt100_vectors__v1__ECMWF_ENS__${domain}__latest__1__F168.png" &
 done
+wait
 
-check=1
-while [ $check != 0 ]; do
- timeout 120 rsync --delete-before -avih /data/projects/operations/LandfallTools/figs/dProgdT/ECMWF/US-west/ /data/projects/website/mirror/htdocs/images/ECMWF/ensemble/dprog/US-west/
- check=$?
- if [ $check != 0 ]; then
-  echo "Transfer failed"
-  sleep 10
- fi
-done
-
-check=1
-while [ $check != 0 ]; do
- timeout 120 rsync --delete-before -avih /data/projects/operations/LandfallTools/figs/dProgdT/ECMWF/AK/ /data/projects/website/mirror/htdocs/images/ECMWF/ensemble/dprog/AK/
- check=$?
- if [ $check != 0 ]; then
-  echo "Transfer failed"
-  sleep 10
- fi
-done
-
-check=1
-while [ $check != 0 ]; do
- timeout 120 rsync --delete-before -avih /data/projects/operations/LandfallTools/figs/dProgdT/ECMWF/SAK/ /data/projects/website/mirror/htdocs/images/ECMWF/ensemble/dprog/SAK/
- check=$?
- if [ $check != 0 ]; then
-  echo "Transfer failed"
-  sleep 10
- fi
-done
 
 date=`date`
 echo "Finished at "$date
