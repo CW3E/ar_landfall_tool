@@ -185,9 +185,7 @@ class landfall_tool_contour:
             self.cflevs = bnds
 
         # Contour Filled
-        print(f"Forecast days X AXIS VALUES before modification: {self.probability.forecast_hour.values}")
         x = self.probability.forecast_hour.values / 24 # convert forecast hour to forecast day
-        print(f"Forecast days X AXIS VALUES: {x}")
         y = self.probability.lat.values
         data = np.flipud(np.rot90(self.probability.values)) # rotate data 90 degrees and flip up down
 
